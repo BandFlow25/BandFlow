@@ -1,0 +1,28 @@
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --accent: 25 95% 53%;  /* Orange for key actions */
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+}
+
+body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+@layer base {
+  :root {
+    --vh: 1vh;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}
