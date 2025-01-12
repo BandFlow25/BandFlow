@@ -12,10 +12,10 @@ import { Clock, ListMusic, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
+import {AddSongsView} from '@/components/songs/SetLists/AddSongsView';
 import { formatDuration } from '@/lib/utils/duration';
 import { SetlistSongCard } from '@/components/songs/SongCard/SetListSongCard';
 import CreateSetlistModal from '@/components/songs/SetLists/CreateSetlistModal';
-import { SongSelectionModal } from '@/components/songs/SetLists/SongSelectionModal';
 import {
   DndContext,
   DragEndEvent,
@@ -43,10 +43,6 @@ async function fetchSongDetails(songId: string): Promise<BandSong | null> {
   }
 }
 
-
-
-
-
 const calculateSetDuration = (songs: (BandSong | undefined)[]): string => {
   const totalSeconds = songs.reduce((total, song) => {
     if (!song?.metadata?.duration) return total;
@@ -54,14 +50,10 @@ const calculateSetDuration = (songs: (BandSong | undefined)[]): string => {
     return total + ((mins || 0) * 60 + (secs || 0));
   }, 0);
 
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  //const minutes = Math.floor(totalSeconds / 60);
+  //const seconds = totalSeconds % 60;
   return formatDuration(totalSeconds);
 };
-
-
-
-
 
 export default function SetlistDetailsPage() {
   const { setActiveBandId, isLoading: isBandLoading } = useBand();
@@ -77,10 +69,49 @@ export default function SetlistDetailsPage() {
   const [selectedSetNumber, setSelectedSetNumber] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const handleRemoveSong = async (songId: string) => {
+    if (!setlist) return;
+
+    const updatedSongs = setlist.songs.filter(s => s.songId !== songId);
+
+    try {
+      await updateSetlistSongs(bandId, setlistId, updatedSongs);
+      await refreshSetlist();
+    } catch (error) {
+      console.error('Error removing song:', error);
+    }
+  };
+
+  const handleSongSelect = async (newSongs: SetlistSong[]) => {
+    if (!setlist) return;
+  
+    const currentSetSongs = setlist.songs
+      .filter(song => song.setNumber === selectedSetNumber);
+  
+    const updatedSongs = [
+      ...setlist.songs,
+      ...newSongs.map((song, idx) => ({
+        ...song,
+        position: currentSetSongs.length + idx
+      }))
+    ];
+  
+    try {
+      await updateSetlistSongs(bandId, setlistId, updatedSongs);
+      await refreshSetlist();
+    } catch (error) {
+      console.error('Error adding songs:', error);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        // Increase the drag delay to prevent accidental drags
+        delay: 100,
+        tolerance: 5, // Add tolerance for better touch handling
+        // Increase the distance threshold to help distinguish between drag and swipe
+        distance: 10,
       },
     })
   );
@@ -124,24 +155,26 @@ export default function SetlistDetailsPage() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || !setlist) return;
-
+  
     if (active.id !== over.id) {
-      const setNumber = parseInt(active.data.current?.setNumber);
-      const setSongs = setlist.songs.filter(song => song.setNumber === setNumber);
-
-      const oldIndex = setSongs.findIndex(song => song.songId === active.id);
-      const newIndex = setSongs.findIndex(song => song.songId === over.id);
-
-      // Create new array with updated positions
-      const reorderedSongs = arrayMove(setSongs, oldIndex, newIndex);
-
-      // Update all songs with new positions
+      const activeSetNumber = (active.data.current as { setNumber: number })?.setNumber;
+      const overSetNumber = (over.data.current as { setNumber: number })?.setNumber;
+  
+      // Create updated songs array
       const updatedSongs = setlist.songs.map(song => {
-        if (song.setNumber !== setNumber) return song;
-        const newSong = reorderedSongs[reorderedSongs.findIndex(s => s.songId === song.songId)];
-        return newSong ? { ...song, position: newSong.position } : song;
+        if (song.songId === active.id) {
+          // Update the dragged song with new set number and position
+          return {
+            ...song,
+            setNumber: overSetNumber,
+            position: setlist.songs
+              .filter(s => s.setNumber === overSetNumber)
+              .length
+          };
+        }
+        return song;
       });
-
+  
       try {
         await updateSetlistSongs(bandId, setlistId!, updatedSongs);
         await refreshSetlist();
@@ -151,30 +184,7 @@ export default function SetlistDetailsPage() {
     }
   };
 
-  const handleSongSelect = async (newSongs: SetlistSong[]) => {
-    if (!setlist) return;
-
-    const currentPositions = setlist.songs
-      .filter(song => song.setNumber === selectedSetNumber)
-      .length;
-
-    const updatedSongs = [
-      ...setlist.songs,
-      ...newSongs.map((song, idx) => ({
-        ...song,
-        position: currentPositions + idx
-      }))
-    ];
-
-    try {
-      await updateSetlistSongs(bandId, setlistId, updatedSongs);
-      await refreshSetlist();
-    } catch (error) {
-      console.error('Error adding songs:', error);
-    }
-  };
-
-  if (isBandLoading || isLoadingSetlist) {
+   if (isBandLoading || isLoadingSetlist) {
     return <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="text-white">Loading...</div>
     </div>;
@@ -277,11 +287,10 @@ export default function SetlistDetailsPage() {
                       {setSongs.map((song, index) => (
                         <SetlistSongCard
                           key={song.songId}
-                          id={song.songId}
                           songDetails={songDetails[song.songId]}
                           position={index + 1}
-                          isLoading={isLoadingSongs}
                           setNumber={setNumber}
+                          onRemove={() => handleRemoveSong(song.songId)}
                         />
                       ))}
                     </div>
@@ -308,16 +317,17 @@ export default function SetlistDetailsPage() {
       </div>
 
       {/* Song Selection Modal */}
-      {selectedSetNumber !== null && (
-        <SongSelectionModal
+      {isModalOpen && selectedSetNumber !== null && (
+        <AddSongsView
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
             setSelectedSetNumber(null);
           }}
-          onSongSelect={handleSongSelect}
-          setNumber={selectedSetNumber}
-          existingSongIds={new Set(setlist.songs.map(s => s.songId))}
+          setlist={setlist}
+          songDetails={songDetails}
+          selectedSetNumber={selectedSetNumber}
+          onSongAdd={handleSongSelect}
         />
       )}
     </PageLayout>
