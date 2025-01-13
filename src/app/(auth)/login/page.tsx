@@ -37,8 +37,12 @@ export default function Login() {
     try {
       await login(email, password);
       router.push('/home');
-    } catch (error: any) {
+    } catch (error) {
+      if (error instanceof Error) {
       setError(error.message || 'An error occurred during login.');
+      } else {
+      setError('An unknown error occurred during login.');
+      }
     } finally {
       setIsLoading(false);
     }

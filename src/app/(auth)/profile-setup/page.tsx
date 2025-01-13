@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera } from 'lucide-react';
+//import { Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthProvider';
 import { createUserProfile, getUserProfile } from '@/lib/services/firebase/auth';
 
@@ -149,7 +149,7 @@ export default function ProfileSetup() {
           {/* Avatar Upload */}
           <div className="flex flex-col items-center">
             <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              {formData.avatar ? (
+              {/* {formData.avatar ? (
                 <img 
                   src={formData.avatar} 
                   alt="Profile" 
@@ -157,7 +157,7 @@ export default function ProfileSetup() {
                 />
               ) : (
                 <Camera className="w-8 h-8 text-gray-400" />
-              )}
+              )} */}
             </div>
             <button 
               type="button" 

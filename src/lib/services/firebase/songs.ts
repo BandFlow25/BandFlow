@@ -1,5 +1,5 @@
 // src/lib/services/firebase/songs.ts
-import { collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, serverTimestamp, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import { BaseSong, BandSong, SongStatus, RAGStatus } from '@/lib/types/song';
 import { auth } from '@/lib/config/firebase';
@@ -184,12 +184,15 @@ export async function addVote(
     const totalVotes = Object.keys(updatedVotes).length;
 
     // If moving to review, store the member count
-    const updateData: any = {
-      [`votes.${userId}`]: {
+    const updateData: Partial<BandSong> = {
+      votes: {
+      ...songData.votes,
+      [userId]: {
         value: score,
-        updatedAt: timestamp
+        updatedAt: Timestamp.now()
+      }
       },
-      updatedAt: timestamp
+      updatedAt: Timestamp.now()
     };
 
     if (totalVotes >= totalMembers) {
@@ -285,7 +288,7 @@ export async function searchBaseSongs(searchQuery: string): Promise<BaseSong[]> 
 
 export async function checkAllMembersVoted(
   bandId: string,
-  votes: Record<string, { value: number; updatedAt: any }>
+  votes: Record<string, { value: number; updatedAt: Timestamp }>
 ): Promise<boolean> {
   const membersQuery = query(
     collection(db, BF_BAND_MEMBERS),

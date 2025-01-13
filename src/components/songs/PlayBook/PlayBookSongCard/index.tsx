@@ -18,7 +18,7 @@ interface PlayBookSongCardProps {
   isSelectionMode?: boolean;
   onStatusChange?: () => void;
 }
-
+ 
 export function PlayBookSongCard({
   song,
   className,
@@ -27,6 +27,7 @@ export function PlayBookSongCard({
   isSelectionMode = false,
   onStatusChange
 }: PlayBookSongCardProps) {
+ 
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { setCurrentSong, setIsPlaying } = usePlayerContext();

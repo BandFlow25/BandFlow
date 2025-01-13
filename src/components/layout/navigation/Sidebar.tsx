@@ -14,6 +14,7 @@ import {
   BookOpen, Calendar, ListMusic, ImageIcon, Shuffle
 } from 'lucide-react';
 
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [songMenuOpen, setSongMenuOpen] = useState(true);

@@ -2,7 +2,6 @@
 import { useMemo, useState } from 'react';
 import { useSongs } from '@/contexts/SongProvider';
 import { 
-  SONG_LIST_TYPES, 
   SONG_LIST_LABELS,
   STATUS_TO_LIST_TYPE,  // Add this import
   type SongListType,    // Change this from SongListTypeValue
@@ -29,7 +28,7 @@ interface SongListProps {
   showCount?: boolean;
 }
 
-export function SongList({ type, showCount = true }: SongListProps) {
+export function SongList({ type }: SongListProps) {
   const { songs, isLoading, error, searchQuery, setSearchQuery } = useSongs();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const { user } = useAuth();

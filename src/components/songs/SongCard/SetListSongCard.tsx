@@ -22,7 +22,7 @@ export function SetlistSongCard({
   songDetails,
   position,
   setNumber,
-  isLoading,
+ // isLoading,
   onRemove
 }: SetlistSongCardProps) {
 
@@ -39,14 +39,14 @@ export function SetlistSongCard({
     isDragging
   } = useSortable({ id, data: { setNumber } });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    ...swipeAmount ? {
-      transform: `translateX(${swipeAmount}px)`,
-      transition: swipeAmount ? 'none' : 'transform 0.2s ease'
-    } : {}
-  };
+  // const style = {
+  //   transform: CSS.Transform.toString(transform),
+  //   transition,
+  //   ...swipeAmount ? {
+  //     transform: `translateX(${swipeAmount}px)`,
+  //     transition: swipeAmount ? 'none' : 'transform 0.2s ease'
+  //   } : {}
+  // };
 
   const isNotPlaybook = songDetails?.status !== SONG_STATUS.PLAYBOOK;
 

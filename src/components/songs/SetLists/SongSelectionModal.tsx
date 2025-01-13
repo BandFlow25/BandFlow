@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useSongs } from '@/contexts/SongProvider';
-import type { BandSong } from '@/lib/types/song';
 import type { SetlistSong } from '@/lib/types/setlist';
 
 //TODO: Make this better

@@ -6,20 +6,17 @@ import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
 import { useSetlist } from '@/contexts/SetlistProvider';
-import type { SetlistSong } from '@/lib/types/setlist';
+//import type { SetlistSong } from '@/lib/types/setlist';
 import type { BandSong } from '@/lib/types/song';
 import PageLayout from '@/components/layout/PageLayout';
 import { Clock, ListMusic, Edit2, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
-import { AddSongsView } from '@/components/songs/SetLists/AddSongsView';
 import { SetlistSongCard } from '@/components/songs/SongCard/SetListSongCard';
 import CreateSetlistModal from '@/components/songs/SetLists/CreateSetlistModal';
-import { DropResult } from '@hello-pangea/dnd';
 import { updateSetlistSongs } from '@/lib/services/firebase/setlists';
-import { formatDuration, calculateSetDurationInSeconds, getSetDurationInfo } from '@/lib/services/bandflowhelpers/SetListHelpers';
-
+import { calculateSetDurationInSeconds, getSetDurationInfo } from '@/lib/services/bandflowhelpers/SetListHelpers';
 import {
   DndContext,
   DragEndEvent,
@@ -28,10 +25,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  closestCenter,      // Add this
+  MeasuringStrategy   // Add this
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
@@ -47,8 +45,8 @@ async function fetchSongDetails(songId: string): Promise<BandSong | null> {
 }
 
 export default function SetlistDetailsPage() {
-  const { setActiveBandId, isLoading: isBandLoading } = useBand();
-  const { setlist, isLoading: isLoadingSetlist, error: setlistError, refreshSetlist } = useSetlist();
+  const { setActiveBandId } = useBand();
+  const { setlist, refreshSetlist } = useSetlist();
   const [showEditModal, setShowEditModal] = useState(false);
   const params = useParams();
   const pathname = usePathname();
@@ -58,9 +56,10 @@ export default function SetlistDetailsPage() {
   const [activeSetNumber, setActiveSetNumber] = useState<number | null>(null);
   const [isLoadingSongs, setIsLoadingSongs] = useState(true);
   const [songDetails, setSongDetails] = useState<Record<string, BandSong>>({});
+
   const [selectedSetNumber, setSelectedSetNumber] = useState<number | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  //const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     // Set active band ID
@@ -103,9 +102,11 @@ export default function SetlistDetailsPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
-        // Remove the touch-specific handling as it's causing issues
-        tolerance: 5, // Add some tolerance for jitter
+        distance: isTouchDevice() ? 5 : 8,
+        // Prevent accidental drags
+        delay: 100,
+        // Required for consistent behavior
+        tolerance: 5,
       },
     })
   );
@@ -114,36 +115,48 @@ export default function SetlistDetailsPage() {
     setActiveId(active.id as string);
     setActiveSetNumber(active.data.current?.setNumber);
   };
+
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
 
-    // Early return if we don't have the required data
     if (!over || !active?.data?.current || !setlist) return;
 
     const activeSetNumber = active.data.current.setNumber;
-    const overSetNumber = (over.data.current as { setNumber?: number })?.setNumber;
 
+    // Get the set number from either the data or the DOM element
+    let overSetNumber: number | undefined;
+
+    if (over.data.current) {
+      overSetNumber = (over.data.current as { setNumber?: number }).setNumber;
+    } else {
+      // Get set number from the container's data attribute
+      const container = document.querySelector(`[data-set-number="${over.id}"]`);
+      if (container) {
+        overSetNumber = parseInt(container.getAttribute('data-set-number') || '');
+      }
+    }
     // Only proceed if we have valid set numbers and they're different
     if (typeof activeSetNumber === 'number' &&
       typeof overSetNumber === 'number' &&
       activeSetNumber !== overSetNumber) {
 
+      // Get current songs in both sets
+      // const currentSetSongs = setlist.songs.filter(s => s.setNumber === activeSetNumber);
+      const targetSetSongs = setlist.songs.filter(s => s.setNumber === overSetNumber);
+
+      // Update the moved song's set number
       const updatedSongs = setlist.songs.map(song => {
         if (song.songId === active.id) {
           return {
             ...song,
-            setNumber: overSetNumber
+            setNumber: overSetNumber,
+            position: targetSetSongs.length // Put it at the end of target set
           };
         }
         return song;
       });
 
-      const finalSongs = updatedSongs.map((song, idx) => ({
-        ...song,
-        position: idx
-      }));
-
-      updateSetlistSongs(bandId, setlistId, finalSongs)
+      updateSetlistSongs(bandId, setlistId, updatedSongs)
         .then(refreshSetlist)
         .catch(console.error);
     }
@@ -156,31 +169,79 @@ export default function SetlistDetailsPage() {
     if (!over || !active?.data?.current || !setlist) return;
 
     const activeSetNumber = active.data.current.setNumber;
-    const overSetNumber = (over.data.current as { setNumber?: number })?.setNumber;
+    const overElement = over.data.current as { setNumber?: number } || over.id;
+    const overSetNumber = typeof overElement === 'object' ?
+      overElement.setNumber :
+      parseInt(over.id?.toString().split('-')[1] || '0');
 
     if (typeof activeSetNumber !== 'number' || typeof overSetNumber !== 'number') return;
 
-    const setSongs = setlist.songs.filter(song => song.setNumber === overSetNumber);
-    const oldIndex = setSongs.findIndex(song => song.songId === active.id);
-    const newIndex = setSongs.findIndex(song => song.songId === over.id);
+    let updatedSongs = [...setlist.songs];
+    const activeIndex = updatedSongs.findIndex(song => song.songId === active.id);
+    const overIndex = updatedSongs.findIndex(song => song.songId === over.id);
 
-    if (oldIndex !== newIndex) {
-      const reorderedSongs = arrayMove(setSongs, oldIndex, newIndex);
+    if (activeSetNumber === overSetNumber) {
+      // Same set reordering
+      if (activeIndex !== overIndex) {
+        const setItems = updatedSongs
+          .filter(song => song.setNumber === overSetNumber)
+          .sort((a, b) => a.position - b.position);
 
-      const updatedSongs = setlist.songs.map(song => {
-        if (song.setNumber !== overSetNumber) return song;
-        const reorderedSong = reorderedSongs[
-          reorderedSongs.findIndex(s => s.songId === song.songId)
-        ];
-        return reorderedSong ? { ...song, position: reorderedSongs.indexOf(reorderedSong) } : song;
+        const [removed] = setItems.splice(activeIndex, 1);
+        if (removed) {
+          setItems.splice(overIndex, 0, removed);
+        }
+
+        // Update positions within the set
+        updatedSongs = updatedSongs.map(song => {
+          if (song.setNumber === overSetNumber) {
+            const newIndex = setItems.findIndex(s => s.songId === song.songId);
+            return { ...song, position: newIndex };
+          }
+          return song;
+        });
+      }
+    } else {
+      // Moving between sets
+      updatedSongs = updatedSongs.map(song => {
+        if (song.songId === active.id) {
+          const targetSetSongs = updatedSongs.filter(s => s.setNumber === overSetNumber);
+          return {
+            ...song,
+            setNumber: overSetNumber,
+            position: targetSetSongs.length
+          };
+        }
+        return song;
       });
 
-      try {
-        await updateSetlistSongs(bandId, setlistId, updatedSongs);
-        await refreshSetlist();
-      } catch (error) {
-        console.error('Error updating song positions:', error);
-      }
+      // Reorder positions in both source and target sets
+      const sourceSetSongs = updatedSongs
+        .filter(song => song.setNumber === activeSetNumber)
+        .sort((a, b) => a.position - b.position);
+
+      const targetSetSongs = updatedSongs
+        .filter(song => song.setNumber === overSetNumber)
+        .sort((a, b) => a.position - b.position);
+
+      updatedSongs = updatedSongs.map(song => {
+        if (song.setNumber === activeSetNumber) {
+          const newIndex = sourceSetSongs.findIndex(s => s.songId === song.songId);
+          return { ...song, position: newIndex };
+        }
+        if (song.setNumber === overSetNumber) {
+          const newIndex = targetSetSongs.findIndex(s => s.songId === song.songId);
+          return { ...song, position: newIndex };
+        }
+        return song;
+      });
+    }
+
+    try {
+      await updateSetlistSongs(bandId, setlistId, updatedSongs);
+      await refreshSetlist();
+    } catch (error) {
+      console.error('Error updating song positions:', error);
     }
   };
   const handleSongRemove = async (songId: string) => {
@@ -195,93 +256,28 @@ export default function SetlistDetailsPage() {
       console.error('Error removing song:', error);
     }
   };
-  const handleSongSelect = async (newSongs: SetlistSong[]) => {
-    if (!setlist) return;
+  // const handleSongSelect = async (newSongs: SetlistSong[]) => {
+  //   if (!setlist) return;
 
-    const existingSongIds = new Set(setlist.songs.map(s => s.songId));
-    const filteredNewSongs = newSongs.filter(song => !existingSongIds.has(song.songId));
+  //   const existingSongIds = new Set(setlist.songs.map(s => s.songId));
+  //   const filteredNewSongs = newSongs.filter(song => !existingSongIds.has(song.songId));
 
-    const updatedSongs = [
-      ...setlist.songs,
-      ...filteredNewSongs.map((song, idx) => ({
-        ...song,
-        position: setlist.songs.length + idx,
-        setNumber: selectedSetNumber || 1
-      }))
-    ];
+  //   const updatedSongs = [
+  //     ...setlist.songs,
+  //     ...filteredNewSongs.map((song, idx) => ({
+  //       ...song,
+  //       position: setlist.songs.length + idx,
+  //       setNumber: selectedSetNumber || 1
+  //     }))
+  //   ];
 
-    try {
-      await updateSetlistSongs(bandId, setlistId, updatedSongs);
-      await refreshSetlist();
-    } catch (error) {
-      console.error('Error adding songs:', error);
-    }
-  };
-  const onDragEnd = async (result: DropResult) => {
-    const { source, destination, draggableId } = result;
-
-    if (!destination || !setlist) return;
-
-    // Skip if dropped in same location
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    const sourceSetNumber = parseInt(source.droppableId.replace('set-', ''));
-    const destSetNumber = parseInt(destination.droppableId.replace('set-', ''));
-
-    // Create a new array with all songs
-    const allSongs = [...setlist.songs];
-
-    // Find the song being moved
-    const movedSongIndex = allSongs.findIndex(s =>
-      s.songId === draggableId && s.setNumber === sourceSetNumber
-    );
-
-    if (movedSongIndex === -1) return;
-
-    // Remove the song from its original position
-    const [movedSong] = allSongs.splice(movedSongIndex, 1);
-
-    if (movedSong) {
-      // Update the song's set number and position
-      movedSong.setNumber = destSetNumber;
-
-      // Find where to insert in the destination set
-      let insertIndex = 0;
-      const destSetSongs = allSongs.filter(s => s.setNumber === destSetNumber);
-
-      if (destination.index < destSetSongs.length) {
-        // Find the actual index in allSongs where we should insert
-        const indexInAllSongs = allSongs.findIndex(s =>
-          s.setNumber === destSetNumber &&
-          s.position === destSetSongs[destination.index]?.position
-        );
-        insertIndex = indexInAllSongs === -1 ? allSongs.length : indexInAllSongs;
-      } else {
-        insertIndex = allSongs.length;
-      }
-
-      // Insert the song at the new position
-      allSongs.splice(insertIndex, 0, movedSong);
-    }
-
-    // Update all positions to be sequential within each set
-    const finalSongs = allSongs.map((song, idx) => ({
-      ...song,
-      position: idx
-    }));
-
-    try {
-      await updateSetlistSongs(bandId, setlistId, finalSongs);
-      await refreshSetlist();
-    } catch (error) {
-      console.error('Error updating song positions:', error);
-    }
-  };
+  //   try {
+  //     await updateSetlistSongs(bandId, setlistId, updatedSongs);
+  //     await refreshSetlist();
+  //   } catch (error) {
+  //     console.error('Error adding songs:', error);
+  //   }
+  // };
 
   return (
     <PageLayout title={setlist?.name || 'Loading...'}>
@@ -329,6 +325,12 @@ export default function SetlistDetailsPage() {
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          collisionDetection={closestCenter}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always
+            }
+          }}
         >
           <div className="space-y-6">
             {Array.from({ length: setlist?.format.numSets || 0 }).map((_, setIndex) => {
@@ -371,7 +373,7 @@ export default function SetlistDetailsPage() {
                         className="text-orange-500 border-orange-500 hover:bg-orange-500/10"
                         onClick={() => {
                           setSelectedSetNumber(setNumber);
-                          setIsModalOpen(true);
+                          //setIsModalOpen(true);
                         }}
                       >
                         Add More Songs
@@ -383,19 +385,23 @@ export default function SetlistDetailsPage() {
                     items={setSongs.map(song => song.songId)}
                     strategy={verticalListSortingStrategy}
                   >
+                    {/* This is the droppable wrapper that allows dropping into empty sets */}
                     <div
                       data-set-number={setNumber}
-                      role="list"  // Add this for accessibility
+                      role="list"
+                      style={{ position: 'relative' }}  // Important for proper drop detection
                       className={`
-                      space-y-2 
-                      rounded-lg 
-                      p-2
-                      transition-colors 
-                      duration-200
-                      min-h-[100px]
-                      ${setSongs.length === 0 ? 'border-2 border-dashed border-gray-700/50' : ''}
-                      ${activeSetNumber === setNumber ? 'bg-gray-700/50' : ''}
-                    `}
+      space-y-2 
+      rounded-lg 
+      p-2
+      transition-colors 
+      duration-200
+      min-h-[100px]
+      ${setSongs.length === 0 ? 'border-2 border-dashed border-gray-700/50 hover:border-orange-500/50' : ''}
+      ${activeSetNumber === setNumber ? 'bg-gray-700/50' : ''}
+      ${setSongs.length === 0 && activeId ? 'border-orange-500/50' : ''}
+    `}
+                      data-droppable={true}  // Important - marks this as a valid drop target
                     >
                       {setSongs.map((song, index) => (
                         <SetlistSongCard
@@ -408,17 +414,16 @@ export default function SetlistDetailsPage() {
                           onRemove={() => handleSongRemove(song.songId)}
                         />
                       ))}
-
                       {setSongs.length === 0 && (
                         <div className="text-center py-6">
-                          <p className="text-gray-400 mb-2">No songs in this set</p>
+                          <p className="text-gray-400 mb-2">Drop songs here or</p>
                           <Button
                             variant="outline"
                             size="lg"
                             className="text-orange-500 border-orange-500 hover:bg-orange-500/10"
                             onClick={() => {
                               setSelectedSetNumber(setNumber);
-                              setIsModalOpen(true);
+                             // setIsModalOpen(true);
                             }}
                           >
                             Add Songs to Set {setNumber}
@@ -446,7 +451,7 @@ export default function SetlistDetailsPage() {
           />
         )}
 
-        {isModalOpen && selectedSetNumber !== null && setlist && (
+        {/* {isModalOpen && selectedSetNumber !== null && setlist && (
           <AddSongsView
             isOpen={isModalOpen}
             onClose={() => {
@@ -458,7 +463,7 @@ export default function SetlistDetailsPage() {
             selectedSetNumber={selectedSetNumber}
             onSongAdd={handleSongSelect}
           />
-        )}
+        )} */}
       </div>
     </PageLayout>
   );

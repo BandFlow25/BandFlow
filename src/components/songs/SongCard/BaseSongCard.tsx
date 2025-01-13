@@ -1,6 +1,6 @@
 // components/songs/SongCard/BaseSongCard.tsx
 import { useState } from 'react';
-import { Music, Play, Trash2, ThumbsDown, ListChecks, PauseCircle, XCircle, BookOpen, ArrowLeft } from 'lucide-react';
+import { Music, Play, Trash2, ThumbsDown, ListChecks, PauseCircle, XCircle, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BandSong, SongListType } from '@/lib/types/song';
 import { SongCardActions } from './SongCardActions';
@@ -29,15 +29,15 @@ export function BaseSongCard({
   className,
   onSongDeleted
 }: BaseSongCardProps) {
+
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showPlaybookButton, setShowPlaybookButton] = useState(false);
   const { setCurrentSong, setIsPlaying } = usePlayerContext();
   const { currentBandId, memberCount, isAdmin } = useBand();
   const { user } = useAuth();
   const voteCount = Object.keys(song.votes || {}).length;
   const hasUserVoted = user ? !!song.votes?.[user.uid] : false;
-  const needsVote = song.status === 'VOTING' && !hasUserVoted;
+  //const needsVote = song.status === 'VOTING' && !hasUserVoted;
 
   // All your existing handler functions remain the same
   const handleStatusChange = async (newStatus: SongStatus) => {

@@ -47,7 +47,7 @@ export function PlayBookList() {
       setSelectedSongs([...playBookSongs]);
     }
   };
-
+ 
   const handleCancelSelection = () => {
     setIsMultiSelectMode(false);
     setSelectedSongs([]);

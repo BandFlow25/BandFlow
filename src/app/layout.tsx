@@ -15,15 +15,15 @@ export const metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/icon.png', type: 'image/png', sizes: '32x32' },
     ],
     apple: [
-      { url: '/apple-icon.png', sizes: '180x180' },
+      { url: 'icons/apple-icon.png', sizes: '180x180' },
     ],
     other: [
       {
         rel: 'apple-touch-icon',
-        url: '/apple-icon.png',
+        url: 'icons/apple-icon.png',
       },
     ],
   },

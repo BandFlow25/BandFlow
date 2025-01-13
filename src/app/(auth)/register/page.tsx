@@ -35,12 +35,16 @@ export default function Register() {
     try {
       await registerWithEmail(email, password);
       router.push('/profile-setup');
-    } catch (error: any) {
+    } catch (error) {
+      if (error instanceof Error) {
       setError(error.message);
+      } else {
+      setError('An unexpected error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+    };
 
   const togglePasswordVisibility = () => {
     setShowPassword(prev => !prev);

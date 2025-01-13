@@ -23,7 +23,7 @@ interface SetlistWithSongDetails extends Setlist {
 }
 
 // Helper function to fetch song details
-async function fetchSongDetails(bandId: string, songId: string): Promise<BandSong | null> {
+async function fetchSongDetails(songId: string): Promise<BandSong | null> {
   try {
     const songDoc = await getDoc(doc(db, 'bf_band_songs', songId));
     if (!songDoc.exists()) return null;
@@ -35,7 +35,7 @@ async function fetchSongDetails(bandId: string, songId: string): Promise<BandSon
 }
 
 function calculateSetlistDuration(setlist: SetlistWithSongDetails): string {
-  let totalSeconds = setlist.songs.reduce((total, song) => {
+  const totalSeconds = setlist.songs.reduce((total, song) => {
     const songDetail = setlist.songDetails[song.songId];
     if (!songDetail?.metadata?.duration) return total;
     const [minutesStr, secondsStr] = songDetail.metadata.duration.split(':');
@@ -44,8 +44,6 @@ function calculateSetlistDuration(setlist: SetlistWithSongDetails): string {
     return total + (minutes * 60 + seconds);
   }, 0);
 
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
   return formatDuration(totalSeconds);
 }
 
@@ -90,7 +88,7 @@ export default function SetlistsPage() {
           const songDetails: Record<string, BandSong> = {};
           await Promise.all(
             setlist.songs.map(async (song) => {
-              const details = await fetchSongDetails(bandId, song.songId);
+              const details = await fetchSongDetails(bandId);
               if (details) {
                 songDetails[song.songId] = details;
               }

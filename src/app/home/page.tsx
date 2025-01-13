@@ -18,6 +18,7 @@ export default function HomePage() {
   const [adminStatuses, setAdminStatuses] = useState<{ [key: string]: boolean }>({});
 
 
+
   // Load bands only when we have a user
   useEffect(() => {
     const loadBands = async () => {

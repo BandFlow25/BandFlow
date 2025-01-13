@@ -54,22 +54,26 @@ export default function CreateBandPage() {
 
     try {
       const bandData = {
-        name: formData.name,
-        description: formData.description,
-        imageUrl: formData.imageUrl,
-        socialLinks: {
-          facebook: formData.facebook,
-          instagram: formData.instagram,
-          twitter: formData.twitter,
-          youtube: formData.youtube
-        }
+      name: formData.name,
+      description: formData.description,
+      imageUrl: formData.imageUrl,
+      socialLinks: {
+        facebook: formData.facebook,
+        instagram: formData.instagram,
+        twitter: formData.twitter,
+        youtube: formData.youtube
+      }
       };
 
       await createBand(user.uid, bandData);
       // Navigate back to home page instead of the band page
       router.push('/home');
-    } catch (error: any) {
+    } catch (error) {
+      if (error instanceof Error) {
       setError(error.message || 'Failed to create band');
+      } else {
+      setError('Failed to create band');
+      }
       setIsLoading(false);
     }
   };
