@@ -8,7 +8,6 @@ import { getSongMetadata } from '@/lib/services/ai/SongMetadata';
 const BF_BASE_SONGS = 'bf_base_songs';
 const BF_BAND_SONGS = 'bf_band_songs';
 const BF_BAND_MEMBERS = 'bf_band_members';
-const BAND_MEMBERS_COLLECTION = 'bf_band_members';
 
 // Helper function to check band membership
 async function isBandMember(userId: string, bandId: string): Promise<boolean> {
@@ -143,6 +142,7 @@ export async function addBandSong(
 
   return bandSongRef.id;
 }
+
 
 export async function addVote(
   songId: string,

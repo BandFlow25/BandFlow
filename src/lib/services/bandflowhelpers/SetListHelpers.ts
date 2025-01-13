@@ -45,7 +45,6 @@ export function parseDuration(duration: string): number {
   }
   return (numbers[0] ?? 0) * 60;
 }
-
 export function calculateSetDuration(songs: (BandSong | undefined)[]): string {
   if (!Array.isArray(songs)) return '0';
   
@@ -57,3 +56,27 @@ export function calculateSetDuration(songs: (BandSong | undefined)[]): string {
   const minutes = Math.floor(totalSeconds / 60);
   return minutes.toString();
 }
+export const calculateSetDurationInSeconds = (songs: (BandSong | undefined)[]): number => {
+  return songs.reduce((total, song) => {
+    if (!song?.metadata?.duration) return total;
+    const [mins, secs] = song.metadata.duration.split(':').map(Number);
+    return total + ((mins || 0) * 60 + (secs || 0));
+  }, 0);
+};
+export const getSetDurationInfo = (durationSeconds: number, targetMinutes: number) => {
+  const durationMinutes = durationSeconds / 60;
+  const variance = Math.abs(durationMinutes - targetMinutes);
+  const variancePercent = (variance / targetMinutes) * 100;
+
+  let color = 'text-green-400';
+  if (variancePercent > 6) {
+    color = durationMinutes < targetMinutes ? 'text-blue-400' : 'text-red-400';
+  }
+
+  return {
+    color,
+    duration: formatDuration(durationSeconds),
+    isUndertime: durationMinutes < targetMinutes,
+    variancePercent
+  };
+};

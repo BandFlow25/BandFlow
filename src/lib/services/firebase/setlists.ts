@@ -3,9 +3,7 @@ import {
   collection, 
   doc, 
   getDoc, 
-  getDocs, 
-  query, 
-  where, 
+  getDocs,  
   setDoc, 
   updateDoc, 
   deleteDoc,
@@ -92,15 +90,41 @@ export async function getSetlist(bandId: string, setlistId: string): Promise<Set
 
 // Update setlist songs
 export async function updateSetlistSongs(
-bandId: string,
-setlistId: string,
-songs: SetlistSong[]
+  bandId: string,
+  setlistId: string,
+  songs: SetlistSong[]
 ): Promise<void> {
-const setlistRef = doc(createSetlistRef(bandId), setlistId);
-await updateDoc(setlistRef, {
-  songs,
-  updatedAt: serverTimestamp()
-});
+  try {
+    // First, ensure all songs have valid positions within their sets
+    const songsBySet = songs.reduce<Record<number, SetlistSong[]>>((acc, song) => {
+      const setNumber = song.setNumber;
+      if (!acc[setNumber]) {
+        acc[setNumber] = [];
+      }
+      acc[setNumber].push(song);
+      return acc;
+    }, {});
+
+    // Update positions within each set
+    const updatedSongs = Object.entries(songsBySet).flatMap(([setNumber, setSongs]) => {
+      return setSongs
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((song, index) => ({
+          ...song,
+          setNumber: parseInt(setNumber),
+          position: index,
+        }));
+    });
+
+    const setlistRef = doc(createSetlistRef(bandId), setlistId);
+    await updateDoc(setlistRef, {
+      songs: updatedSongs,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating setlist songs:', error);
+    throw error;
+  }
 }
 
 // Delete setlist

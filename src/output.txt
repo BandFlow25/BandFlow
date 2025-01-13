@@ -40,6 +40,12 @@ C:.
 ¦   ¦       +---media
 ¦   ¦       ¦       page.tsx
 ¦   ¦       ¦       
+¦   ¦       +---setlists
+¦   ¦       ¦   ¦   page.tsx
+¦   ¦       ¦   ¦   
+¦   ¦       ¦   +---[setlistId]
+¦   ¦       ¦           page.tsx
+¦   ¦       ¦           
 ¦   ¦       +---settings
 ¦   ¦       ¦       page.tsx
 ¦   ¦       ¦       
@@ -89,8 +95,16 @@ C:.
 ¦   ¦   ¦           CardActions.tsx
 ¦   ¦   ¦           index.tsx
 ¦   ¦   ¦           
+¦   ¦   +---SetLists
+¦   ¦   ¦       AddSongsView.tsx
+¦   ¦   ¦       CreateSetlistModal.tsx
+¦   ¦   ¦       EditableSetlistDetails.tsx
+¦   ¦   ¦       SetlistSplitView.tsx
+¦   ¦   ¦       SongSelectionModal.tsx
+¦   ¦   ¦       
 ¦   ¦   +---SongCard
 ¦   ¦   ¦       BaseSongCard.tsx
+¦   ¦   ¦       SetListSongCard.tsx
 ¦   ¦   ¦       SongCardActions.tsx
 ¦   ¦   ¦       
 ¦   ¦   +---SongList
@@ -110,21 +124,13 @@ C:.
 ¦               AddSongButton.tsx
 ¦               
 +---contexts
-¦   +---auth
-¦   ¦       AuthProvider.tsx
-¦   ¦       
-¦   +---band
-¦   ¦       BandProvider.tsx
-¦   ¦       
-¦   +---player
-¦   ¦       PlayerContext.tsx
-¦   ¦       
-¦   +---songs
-¦   ¦       SongProvider.tsx
-¦   ¦       
-¦   +---ui
-¦           ModalProvider.tsx
-¦           
+¦       AuthProvider.tsx
+¦       BandProvider.tsx
+¦       ModalProvider.tsx
+¦       PlayerContext.tsx
+¦       SetlistProvider.tsx
+¦       SongProvider.tsx
+¦       
 +---lib
 ¦   +---config
 ¦   ¦       firebase.ts
@@ -134,11 +140,13 @@ C:.
 ¦   ¦       
 ¦   +---services
 ¦   ¦   +---ai
+¦   ¦   ¦       SetlistAIHelper.tsx
 ¦   ¦   ¦       SongMetadata.ts
 ¦   ¦   ¦       
 ¦   ¦   +---firebase
 ¦   ¦   ¦       auth.ts
 ¦   ¦   ¦       bands.ts
+¦   ¦   ¦       setlists.ts
 ¦   ¦   ¦       songs.ts
 ¦   ¦   ¦       
 ¦   ¦   +---spotify
@@ -151,6 +159,7 @@ C:.
 ¦   ¦       
 ¦   +---utils
 ¦           auth-errors.ts
+¦           duration.ts
 ¦           index.ts
 ¦           
 +---pages

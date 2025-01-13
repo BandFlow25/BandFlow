@@ -15,7 +15,7 @@ import CreateSetlistModal from '@/components/songs/SetLists/CreateSetlistModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { formatDuration } from '@/lib/utils/duration';
+import { formatDuration } from '@/lib/services/bandflowhelpers/SetListHelpers';
 
 // Extend Setlist type to include song details
 interface SetlistWithSongDetails extends Setlist {
