@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
+import  DroppableSet  from '@/components/songs/SetLists/DroppableSet';
 import { useSetlist } from '@/contexts/SetlistProvider';
 //import type { SetlistSong } from '@/lib/types/setlist';
 import type { BandSong } from '@/lib/types/song';
@@ -25,17 +26,23 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCenter,      // Add this
-  MeasuringStrategy   // Add this
+  closestCenter,
+  MeasuringStrategy, useDroppable
 } from '@dnd-kit/core';
+import { COLLECTIONS } from '@/lib/constants';
+
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
-async function fetchSongDetails(songId: string): Promise<BandSong | null> {
+async function fetchSongDetails(bandId: string, songId: string): Promise<BandSong | null> {
   try {
-    const songDoc = await getDoc(doc(db, 'bf_band_songs', songId));
+    console.log('Fetching song details for:', songId);
+    const songRef = doc(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_SONGS, songId);
+    const songDoc = await getDoc(songRef);
+    
+    console.log('Song doc exists:', songDoc.exists(), songDoc.data());
     if (!songDoc.exists()) return null;
     return { id: songDoc.id, ...songDoc.data() } as BandSong;
   } catch (error) {
@@ -67,21 +74,22 @@ export default function SetlistDetailsPage() {
       setActiveBandId(bandId);
     }
     // Load song details if we have both bandId and setlist
+
     const loadSongDetails = async () => {
       if (!setlist) return;
 
       setIsLoadingSongs(true);
       const details: Record<string, BandSong> = {};
 
-      try {
-        await Promise.all(
-          setlist.songs.map(async (song) => {
-            const songDetail = await fetchSongDetails(song.songId);
-            if (songDetail) {
-              details[song.songId] = songDetail;
-            }
-          })
-        );
+try {
+  await Promise.all(
+    setlist.songs.map(async (song) => {
+      const songDetail = await fetchSongDetails(bandId, song.songId); // Added bandId parameter
+      if (songDetail) {
+        details[song.songId] = songDetail;
+      }
+    })
+  );
         setSongDetails(details);
       } catch (error) {
         console.error('Error loading song details:', error);
@@ -256,28 +264,7 @@ export default function SetlistDetailsPage() {
       console.error('Error removing song:', error);
     }
   };
-  // const handleSongSelect = async (newSongs: SetlistSong[]) => {
-  //   if (!setlist) return;
 
-  //   const existingSongIds = new Set(setlist.songs.map(s => s.songId));
-  //   const filteredNewSongs = newSongs.filter(song => !existingSongIds.has(song.songId));
-
-  //   const updatedSongs = [
-  //     ...setlist.songs,
-  //     ...filteredNewSongs.map((song, idx) => ({
-  //       ...song,
-  //       position: setlist.songs.length + idx,
-  //       setNumber: selectedSetNumber || 1
-  //     }))
-  //   ];
-
-  //   try {
-  //     await updateSetlistSongs(bandId, setlistId, updatedSongs);
-  //     await refreshSetlist();
-  //   } catch (error) {
-  //     console.error('Error adding songs:', error);
-  //   }
-  // };
 
   return (
     <PageLayout title={setlist?.name || 'Loading...'}>
@@ -344,95 +331,22 @@ export default function SetlistDetailsPage() {
               );
               const durationInfo = getSetDurationInfo(
                 setDurationSeconds,
-                setlist?.format.setDuration || 45
+                setlist?.format.setDuration || 45 //TODO: why hard coded?? //why hard coded?? This should get setlist duration from setlist.
               );
 
               return (
-                <div
+                <DroppableSet
                   key={setNumber}
-                  className={`
-                    p-4 
-                    rounded-lg 
-                    bg-gray-800 
-                    transition-colors 
-                    duration-200
-                    shadow-md
-                    ${activeSetNumber === setNumber ? 'ring-2 ring-orange-500/20' : ''}
-                  `}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-medium text-white">Set {setNumber}</h3>
-                      <span className={`text-sm ${durationInfo.color}`}>
-                        ({setSongs.length} songs - {durationInfo.duration})
-                      </span>
-                    </div>
-                    {setSongs.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="text-orange-500 border-orange-500 hover:bg-orange-500/10"
-                        onClick={() => {
-                          setSelectedSetNumber(setNumber);
-                          //setIsModalOpen(true);
-                        }}
-                      >
-                        Add More Songs
-                      </Button>
-                    )}
-                  </div>
-
-                  <SortableContext
-                    items={setSongs.map(song => song.songId)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {/* This is the droppable wrapper that allows dropping into empty sets */}
-                    <div
-                      data-set-number={setNumber}
-                      role="list"
-                      style={{ position: 'relative' }}  // Important for proper drop detection
-                      className={`
-      space-y-2 
-      rounded-lg 
-      p-2
-      transition-colors 
-      duration-200
-      min-h-[100px]
-      ${setSongs.length === 0 ? 'border-2 border-dashed border-gray-700/50 hover:border-orange-500/50' : ''}
-      ${activeSetNumber === setNumber ? 'bg-gray-700/50' : ''}
-      ${setSongs.length === 0 && activeId ? 'border-orange-500/50' : ''}
-    `}
-                      data-droppable={true}  // Important - marks this as a valid drop target
-                    >
-                      {setSongs.map((song, index) => (
-                        <SetlistSongCard
-                          key={`${song.songId}-${setNumber}`}
-                          id={song.songId}
-                          songDetails={songDetails[song.songId]}
-                          position={index + 1}
-                          setNumber={setNumber}
-                          isLoading={isLoadingSongs}
-                          onRemove={() => handleSongRemove(song.songId)}
-                        />
-                      ))}
-                      {setSongs.length === 0 && (
-                        <div className="text-center py-6">
-                          <p className="text-gray-400 mb-2">Drop songs here or</p>
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            className="text-orange-500 border-orange-500 hover:bg-orange-500/10"
-                            onClick={() => {
-                              setSelectedSetNumber(setNumber);
-                             // setIsModalOpen(true);
-                            }}
-                          >
-                            Add Songs to Set {setNumber}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </SortableContext>
-                </div>
+                  setNumber={setNumber}
+                  setSongs={setSongs}
+                  activeSetNumber={activeSetNumber}
+                  activeId={activeId}
+                  songDetails={songDetails}
+                  isLoadingSongs={isLoadingSongs}
+                  durationInfo={durationInfo}
+                  onSongRemove={handleSongRemove}
+                  onSetNumberSelect={setSelectedSetNumber}
+                />
               );
             })}
           </div>

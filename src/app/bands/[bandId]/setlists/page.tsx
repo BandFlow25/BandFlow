@@ -1,4 +1,4 @@
-//src/app/bands/[bandId]/setlists/page.tsx
+// src/app/bands/[bandId]/setlists/page.tsx
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -6,45 +6,19 @@ import { useParams, useRouter } from 'next/navigation';
 import { useBand } from '@/contexts/BandProvider';
 import { Plus, Clock, ListMusic } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
-import { collection, doc, getDoc, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import { COLLECTIONS } from '@/lib/constants';
-import type { Setlist } from '@/lib/types/setlist';  // Remove SetlistSong import
-import type { BandSong } from '@/lib/types/song';
+import type { Setlist } from '@/lib/types/setlist';
 import CreateSetlistModal from '@/components/songs/SetLists/CreateSetlistModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { formatDuration } from '@/lib/services/bandflowhelpers/SetListHelpers';
 
-// Extend Setlist type to include song details
-interface SetlistWithSongDetails extends Setlist {
-  songDetails: Record<string, BandSong>;
-}
-
-// Helper function to fetch song details
-async function fetchSongDetails(songId: string): Promise<BandSong | null> {
-  try {
-    const songDoc = await getDoc(doc(db, 'bf_band_songs', songId));
-    if (!songDoc.exists()) return null;
-    return { id: songDoc.id, ...songDoc.data() } as BandSong;
-  } catch (error) {
-    console.error('Error fetching song details:', error);
-    return null;
-  }
-}
-
-function calculateSetlistDuration(setlist: SetlistWithSongDetails): string {
-  const totalSeconds = setlist.songs.reduce((total, song) => {
-    const songDetail = setlist.songDetails[song.songId];
-    if (!songDetail?.metadata?.duration) return total;
-    const [minutesStr, secondsStr] = songDetail.metadata.duration.split(':');
-    const minutes = parseInt(minutesStr ?? '0') || 0;
-    const seconds = parseInt(secondsStr ?? '0') || 0;
-    return total + (minutes * 60 + seconds);
-  }, 0);
-
-  return formatDuration(totalSeconds);
+// Simplified interface - we don't need song details for the overview
+interface SetlistOverview extends Setlist {
+  id: string;
+  hasNonPlaybookSongs?: boolean; // For future status checking
 }
 
 export default function SetlistsPage() {
@@ -52,8 +26,8 @@ export default function SetlistsPage() {
   const { setActiveBandId, activeBand, isLoading } = useBand();
   const params = useParams();
   const bandId = params?.bandId as string;
-  
-  const [setlists, setSetlists] = useState<SetlistWithSongDetails[]>([]);
+
+  const [setlists, setSetlists] = useState<SetlistOverview[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'created' | 'duration' | 'sets'>('created');
@@ -65,7 +39,7 @@ export default function SetlistsPage() {
     }
   }, [bandId, setActiveBandId]);
 
-  // Subscribe to setlists and load song details
+  // Subscribe to setlists
   useEffect(() => {
     if (!bandId) return;
 
@@ -75,30 +49,15 @@ export default function SetlistsPage() {
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(setlistsQuery, async (snapshot) => {
+    const unsubscribe = onSnapshot(setlistsQuery, (snapshot) => {
       const setlistData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        songDetails: {}
-      })) as SetlistWithSongDetails[];
+        // TODO: Add status check for non-playbook songs when needed
+        hasNonPlaybookSongs: false
+      })) as SetlistOverview[];
 
-      // Fetch song details for each setlist
-      const updatedSetlists = await Promise.all(
-        setlistData.map(async (setlist) => {
-          const songDetails: Record<string, BandSong> = {};
-          await Promise.all(
-            setlist.songs.map(async (song) => {
-              const details = await fetchSongDetails(bandId);
-              if (details) {
-                songDetails[song.songId] = details;
-              }
-            })
-          );
-          return { ...setlist, songDetails };
-        })
-      );
-
-      setSetlists(updatedSetlists);
+      setSetlists(setlistData);
     });
 
     return () => unsubscribe();
@@ -107,16 +66,10 @@ export default function SetlistsPage() {
   const organizedSetlists = useMemo(() => {
     let filtered = setlists;
 
-    // Apply search filter
+    // Apply search filter - simplified to just setlist name for now
     if (searchQuery) {
-      filtered = filtered.filter(setlist => 
-        setlist.songs.some(song => {
-          const songDetail = setlist.songDetails[song.songId];
-          return songDetail && (
-            songDetail.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            songDetail.artist.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        })
+      filtered = filtered.filter(setlist =>
+        setlist.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -205,10 +158,10 @@ export default function SetlistsPage() {
                 <h3 className="text-lg font-medium text-white mb-4">{groupTitle}</h3>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {groupSetlists.map(setlist => (
-                    <div 
-                    key={setlist.id}
-                    onClick={() => router.push(`/bands/${bandId}/setlists/${setlist.id}`)}
-                    className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors cursor-pointer group"
+                    <div
+                      key={setlist.id}
+                      onClick={() => router.push(`/bands/${bandId}/setlists/${setlist.id}`)}
+                      className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors cursor-pointer group"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <h3 className="font-medium text-white group-hover:text-orange-500 transition-colors">
@@ -222,11 +175,6 @@ export default function SetlistsPage() {
                         <div className="flex items-center gap-1">
                           <ListMusic className="w-4 h-4" />
                           <span>{setlist.songs.length} songs</span>
-                          {setlist.songs.length > 0 && (
-                            <span className="text-gray-500">
-                              ({calculateSetlistDuration(setlist)})
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">

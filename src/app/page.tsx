@@ -44,13 +44,13 @@ export default function Home() {
           >
             Sign In
           </Link>
-          <Link
+          {/* <Link
             href="/register"
             className="w-full bg-gray-800 text-white py-3 px-6 rounded-lg font-medium
                      hover:bg-gray-700 transition-colors text-center border border-gray-700"
           >
             Create Account
-          </Link>
+          </Link> */}
         </div>
       </div>
 

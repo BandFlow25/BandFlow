@@ -1,8 +1,7 @@
-// contexts/songs/SongProvider.tsx
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import { useBand } from '@/contexts/BandProvider';
 import type { BandSong } from '@/lib/types/song';
@@ -41,14 +40,20 @@ export function SongsProvider({ children }: SongsProviderProps) {
     setError(null);
 
     try {
-      const songsRef = collection(db, COLLECTIONS.BAND_SONGS);
+      // Get reference to the songs subcollection of the current band
+      const songsRef = collection(
+        db, 
+        COLLECTIONS.BANDS, 
+        activeBand.id, 
+        COLLECTIONS.BAND_SONGS
+      );
+
       const songQuery = query(
         songsRef,
-        where('bandId', '==', activeBand.id),
         orderBy('createdAt', 'desc')
       );
       
-      // Set up real-time listener and return unsubscribe function directly
+      // Set up real-time listener
       return onSnapshot(
         songQuery, 
         (snapshot) => {

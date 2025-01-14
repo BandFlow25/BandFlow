@@ -33,22 +33,43 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 function baseToSpotifyTrack(song: BaseSong): ExtendedSpotifyTrack {
+  console.log('baseToSpotifyTrack: Converting BaseSong to ExtendedSpotifyTrack:', song);
+
   const spotifyId = song.spotifyUid?.split(':').pop() || '';
+  console.log(`baseToSpotifyTrack: Extracted Spotify ID: ${spotifyId}`);
+
+  // Log the incoming duration metadata
+  if (song.metadata?.duration) {
+    console.log('baseToSpotifyTrack: Original metadata duration:', song.metadata.duration);
+  } else {
+    console.log('baseToSpotifyTrack: No metadata duration found');
+  }
+
+  //TODO: Figure out WTF this is here? Its not needed.
+  // Convert duration
+  const durationMs = song.metadata?.duration
+    ? parseInt(song.metadata.duration) * 1000
+    : 0;
+
+  console.log(`WHY? AddSongModal : baseToSpotifyTrack: Converted duration_ms: ${durationMs}`);
+
   return {
     id: spotifyId,
     name: song.title,
     artists: [{ name: song.artist }],
     preview_url: song.previewUrl,
     external_urls: { spotify: song.previewUrl },
-    duration_ms: song.metadata?.duration ? parseInt(song.metadata.duration) * 1000 : 0,
+    duration_ms: durationMs,
     album: {
-      images: [{
-        url: song.thumbnail || '',
-        height: 300,
-        width: 300
-      }]
+      images: [
+        {
+          url: song.thumbnail || '',
+          height: 300,
+          width: 300,
+        },
+      ],
     },
-    baseSongId: song.id
+    baseSongId: song.id,
   };
 }
 
@@ -89,7 +110,8 @@ export default function AddSongModal() {
           setSuggestions(suggestions);
         } else {
           const results = await searchSpotifyTracks(debouncedQuery);
-          setSuggestions(results);
+
+             setSuggestions(results);
         }
       } catch (err) {
         console.error(err);
@@ -152,6 +174,7 @@ export default function AddSongModal() {
         if (existingBaseSong) {
           baseSongId = existingBaseSong.id;
         } else {
+          
           baseSongId = await addBaseSong({
             title: selectedTrack.name,
             artist: selectedTrack.artists.map((a) => a.name).join(", "),

@@ -2,6 +2,7 @@
 import { Clock, Activity, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BandSong } from '@/lib/types/song';
+import { DurationtoMinSec } from '@/lib/services/bandflowhelpers/SetListHelpers';
 
 interface MetadataDisplayProps {
   song: BandSong;
@@ -13,11 +14,19 @@ export function MetadataDisplay({ song, className }: MetadataDisplayProps) {
     <div className={cn("flex flex-col justify-center gap-1 min-w-[80px] px-2", className)}>
       <div className="flex items-center gap-2 text-xs text-gray-400">
         <Clock className="w-3 h-3" />
-        <span>{song.metadata?.duration || '-'}</span>
+        <span>
+          {song.metadata?.duration
+            ? DurationtoMinSec(parseInt(song.metadata.duration, 10))
+            : '-'}
+        </span>
       </div>
       <div className="flex items-center gap-2 text-xs text-gray-400">
         <Activity className="w-3 h-3" />
-        <span>{song.metadata?.bpm || '-'}</span>
+        <span>
+          {song.metadata?.bpm 
+            ? `${song.metadata.bpm} bpm` 
+            : '-'}
+        </span>
       </div>
       <div className="flex items-center gap-2 text-xs text-gray-400">
         <Music2 className="w-3 h-3" />

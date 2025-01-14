@@ -1,7 +1,7 @@
-// lib/utils/duration.ts
+// lib/services/bandflowhelpers/SetListHelpers.ts
 import type { BandSong } from '@/lib/types/song';
 
-export function formatDuration(seconds: number, includeSeconds = true): string {
+export function DurationtoMinSec(seconds: number, includeSeconds = true): string {
   if (typeof seconds !== 'number' || isNaN(seconds)) {
     return '--:--';
   }
@@ -28,54 +28,44 @@ export function formatDuration(seconds: number, includeSeconds = true): string {
     ? `${minutes}`
     : `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
-export function parseDuration(duration: string): number {
-  if (!duration) return 0;
-  
-  const parts = duration.split(':');
-  if (!Array.isArray(parts)) return 0;
-  
-  const numbers = parts.map(p => parseInt(p, 10));
-  if (numbers.some(n => isNaN(n))) return 0;
-  
-  if (parts.length === 3) {
-    return (numbers[0] ?? 0) * 3600 + (numbers[1] ?? 0) * 60 + (numbers[2] ?? 0);
-  }
-  if (parts.length === 2) {
-    return (numbers[0] ?? 0) * 60 + (numbers[1] ?? 0);
-  }
-  return (numbers[0] ?? 0) * 60;
-}
-export function calculateSetDuration(songs: (BandSong | undefined)[]): string {
-  if (!Array.isArray(songs)) return '0';
-  
-  const totalSeconds = songs.reduce((total, song) => {
-    if (!song?.metadata?.duration) return total;
-    return total + parseDuration(song.metadata.duration);
-  }, 0);
 
-  const minutes = Math.floor(totalSeconds / 60);
-  return minutes.toString();
-}
+// Simplified to just sum the seconds
 export const calculateSetDurationInSeconds = (songs: (BandSong | undefined)[]): number => {
   return songs.reduce((total, song) => {
     if (!song?.metadata?.duration) return total;
-    const [mins, secs] = song.metadata.duration.split(':').map(Number);
-    return total + ((mins || 0) * 60 + (secs || 0));
+    return total + parseInt(song.metadata.duration, 10);
   }, 0);
 };
+
+// Simplified duration info with clearer calculation
 export const getSetDurationInfo = (durationSeconds: number, targetMinutes: number) => {
   const durationMinutes = durationSeconds / 60;
   const variance = Math.abs(durationMinutes - targetMinutes);
   const variancePercent = (variance / targetMinutes) * 100;
-
-  let color = 'text-green-400';
-  if (variancePercent > 6) {
-    color = durationMinutes < targetMinutes ? 'text-blue-400' : 'text-red-400';
+  
+  console.log('Duration Info:', {
+    durationSeconds,
+    targetMinutes,
+    durationMinutes,
+    variance,
+    variancePercent
+  });
+  
+  let color;
+  if (variancePercent <= 8) {
+    color = 'text-green-400';
+    console.log('Color set to blue - within 8% variance');
+  } else if (durationMinutes < targetMinutes) {
+    color = 'text-yellow-400';
+    console.log('Color set to amber - duration less than target');
+  } else {
+    color = 'text-red-400';
+    console.log('Color set to red - duration exceeds target');
   }
-
+  
   return {
     color,
-    duration: formatDuration(durationSeconds),
+    duration: DurationtoMinSec(durationSeconds),
     isUndertime: durationMinutes < targetMinutes,
     variancePercent
   };

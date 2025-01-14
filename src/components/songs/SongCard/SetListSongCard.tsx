@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatDuration, parseDuration } from '@/lib/services/bandflowhelpers/SetListHelpers';
+import { DurationtoMinSec } from '@/lib/services/bandflowhelpers/SetListHelpers';
 import type { BandSong } from '@/lib/types/song';
 import { SONG_STATUS } from '@/lib/types/song';
 import { useSwipeable } from 'react-swipeable';
@@ -156,12 +156,13 @@ export function SetlistSongCard({
           </div>
           <span className="text-gray-400 flex-shrink-0 ml-auto font-mono">
             {songDetails?.metadata?.duration
-              ? formatDuration(parseDuration(songDetails.metadata.duration))
-              : '--:--'}
+              ? DurationtoMinSec(parseInt(songDetails.metadata.duration))
+              : '-'}
           </span>
         </div>
       </div>
 
+  
       {showConfirm && (
         <div className="absolute inset-0 flex items-center justify-end bg-red-500/90 rounded-lg px-2 z-50">
           <div className="flex items-center gap-2">

@@ -25,8 +25,8 @@ export const ROUTES = {
 export const COLLECTIONS = {
   USERS: 'bf_users',
   BANDS: 'bf_bands',
-  BAND_SONGS: 'bf_band_songs', // Updated to match our Firebase collection
-  SETLISTS: 'setlists', //is there an issue here with the way FS concats this with bf_bands???
+  BASE_SONGS: 'bf_base_songs',
+  // These are subcollections under BANDS
+  BAND_SONGS: 'songs',     // NEW: subcollection path
+  SETLISTS: 'setlists',    // Existing subcollection path
 } as const;
-
-

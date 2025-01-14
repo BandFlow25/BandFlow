@@ -13,6 +13,7 @@ export interface SpotifyTrack {
       height: number;
       width: number;
     }>;
+    
   };
  }
   
