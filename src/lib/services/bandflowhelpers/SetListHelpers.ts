@@ -54,13 +54,10 @@ export const getSetDurationInfo = (durationSeconds: number, targetMinutes: numbe
   let color;
   if (variancePercent <= 8) {
     color = 'text-green-400';
-    console.log('Color set to blue - within 8% variance');
   } else if (durationMinutes < targetMinutes) {
     color = 'text-yellow-400';
-    console.log('Color set to amber - duration less than target');
   } else {
     color = 'text-red-400';
-    console.log('Color set to red - duration exceeds target');
   }
   
   return {
