@@ -1,4 +1,4 @@
-// components/songs/PlayBook/PlayBookSongCard/index.tsx
+// src\components\songs\SongCard\PlayBookSongCard.tsx
 import { useState } from 'react';
 import { Music, Play, ArrowLeftCircle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,13 +32,13 @@ export function PlayBookSongCard({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { setCurrentSong, setIsPlaying } = usePlayerContext();
   const { user } = useAuth();
-  const { isAdmin } = useBand();
+  const { activeBand, isAdmin } = useBand();  // Added activeBand here
 
   const handleMoveBack = async () => {
-    if (!user || !isAdmin) return;
+    if (!user || !isAdmin || !activeBand?.id) return;
     
     try {
-      await updateSongStatus(song.id, user.uid, 'PRACTICE');
+      await updateSongStatus(activeBand.id, song.id, user.uid, 'PRACTICE');
       onStatusChange?.();
       setIsMenuOpen(false);
     } catch (error) {

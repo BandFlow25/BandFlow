@@ -7,21 +7,18 @@ import {
   setDoc, 
   updateDoc, 
   deleteDoc,
-  Timestamp,
-  serverTimestamp 
+  serverTimestamp,
+  Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import type { Setlist, SetlistSong } from '@/lib/types/setlist';
 import { COLLECTIONS } from '@/lib/constants'; 
 
-const createSetlistRef = (bandId: string) => 
-collection(db, COLLECTIONS.BANDS, bandId, 'setlists');
+// Helper function to get setlists collection reference
+const getSetlistsCollection = (bandId: string) => 
+  collection(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.SETLISTS);
 
-// Create a new setlist
-export async function createSetlist(
-bandId: string,
-userId: string,
-data: {
+interface CreateSetlistData {
   name: string;
   format: {
     numSets: number;
@@ -29,73 +26,82 @@ data: {
   };
   songs: SetlistSong[];
 }
+
+export async function createSetlist(
+  bandId: string,
+  userId: string,
+  data: CreateSetlistData
 ): Promise<string> {
-try {
-  const setlistRef = doc(createSetlistRef(bandId));
-  console.log("Firestore path:", `${COLLECTIONS.BANDS}/${bandId}/setlists/${setlistRef.id}`);
+  try {
+    console.log('Creating setlist:', { bandId, userId });
+    const setlistRef = doc(getSetlistsCollection(bandId));
 
-  const now = Timestamp.now();
-  const setlist = {
-    name: data.name,
-    bandId,
-    createdBy: userId,
-    format: data.format,
-    songs: data.songs,
-    createdAt: now,
-    updatedAt: now,
-  };
+    const setlist = {
+      name: data.name,
+      bandId,
+      createdBy: userId,
+      format: data.format,
+      songs: data.songs,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
 
-  await setDoc(setlistRef, setlist);
-  return setlistRef.id;
-} catch (error) {
-  console.error("Error creating setlist:", error);
-  throw error;
+    console.log('Setlist data to save:', setlist);
+    await setDoc(setlistRef, setlist);
+    return setlistRef.id;
+  } catch (error) {
+    console.error("Error creating setlist:", error);
+    throw error;
+  }
 }
-}
 
-// Get all setlists for a band
 export async function getBandSetlists(bandId: string): Promise<Setlist[]> {
-const setlistsRef = createSetlistRef(bandId);
-const snapshot = await getDocs(setlistsRef);
-return snapshot.docs.map(doc => ({
-  id: doc.id,
-  ...doc.data()
-})) as Setlist[];
+  try {
+    console.log('Getting setlists for band:', bandId);
+    const snapshot = await getDocs(getSetlistsCollection(bandId));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Setlist[];
+  } catch (error) {
+    console.error("Error getting band setlists:", error);
+    throw error;
+  }
 }
 
-// Get a single setlist
 export async function getSetlist(bandId: string, setlistId: string): Promise<Setlist | null> {
   try {
-    const setlistRef = doc(createSetlistRef(bandId), setlistId);
+    console.log('Getting setlist:', { bandId, setlistId });
+    const setlistRef = doc(getSetlistsCollection(bandId), setlistId);
     const snapshot = await getDoc(setlistRef);
  
     if (!snapshot.exists()) {
-      console.warn('getSetlist Debug - Document does not exist');
+      console.log('Setlist not found');
       return null;
     }
 
-    const setlistData = {
+    const data = {
       id: snapshot.id,
       ...snapshot.data(),
       songDetails: {} // Initialize empty songDetails
     } as Setlist;
 
-    return setlistData;
+    console.log('Retrieved setlist:', data);
+    return data;
   } catch (error) {
-    console.error('getSetlist Debug - Error:', error);
+    console.error('Error getting setlist:', error);
     throw error;
   }
 }
- 
 
-// Update setlist songs
 export async function updateSetlistSongs(
   bandId: string,
   setlistId: string,
   songs: SetlistSong[]
 ): Promise<void> {
   try {
-    // First, ensure all songs have valid positions within their sets
+    console.log('Updating setlist songs:', { bandId, setlistId });
+    
     const songsBySet = songs.reduce<Record<number, SetlistSong[]>>((acc, song) => {
       const setNumber = song.setNumber;
       if (!acc[setNumber]) {
@@ -105,58 +111,43 @@ export async function updateSetlistSongs(
       return acc;
     }, {});
 
-    // Update positions within each set
-    const updatedSongs = Object.entries(songsBySet).flatMap(([setNumber, setSongs]) => {
-      return setSongs
+    const updatedSongs = Object.entries(songsBySet).flatMap(([setNumber, setSongs]) => 
+      setSongs
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
         .map((song, index) => ({
           ...song,
           setNumber: parseInt(setNumber),
-          position: index,
-        }));
-    });
+          position: index
+        }))
+    );
 
-    const setlistRef = doc(createSetlistRef(bandId), setlistId);
+    const setlistRef = doc(getSetlistsCollection(bandId), setlistId);
+    
+    // Only update songs and updatedAt timestamp
     await updateDoc(setlistRef, {
       songs: updatedSongs,
       updatedAt: serverTimestamp()
     });
+    
+    console.log('Setlist songs updated successfully');
   } catch (error) {
     console.error('Error updating setlist songs:', error);
     throw error;
   }
 }
 
-// Delete setlist
 export async function deleteSetlist(bandId: string, setlistId: string): Promise<void> {
-const setlistRef = doc(createSetlistRef(bandId), setlistId);
-await deleteDoc(setlistRef);
+  try {
+    console.log('Deleting setlist:', { bandId, setlistId });
+    const setlistRef = doc(getSetlistsCollection(bandId), setlistId);
+    await deleteDoc(setlistRef);
+    console.log('Setlist deleted successfully');
+  } catch (error) {
+    console.error('Error deleting setlist:', error);
+    throw error;
+  }
 }
 
-// Duplicate setlist
-export async function duplicateSetlist(
-bandId: string,
-setlistId: string,
-newName: string
-): Promise<string> {
-const originalSetlist = await getSetlist(bandId, setlistId);
-if (!originalSetlist) throw new Error('Setlist not found');
-
-const newSetlistRef = doc(createSetlistRef(bandId));
-const now = Timestamp.now();
-
-const newSetlist: Omit<Setlist, 'id'> = {
-  ...originalSetlist,
-  name: newName,
-  createdAt: now,
-  updatedAt: now
-};
-
-await setDoc(newSetlistRef, newSetlist);
-return newSetlistRef.id;
-}
-
-// Interface for the update payload
 interface SetlistUpdateData {
   name?: string;
   format?: {
@@ -165,18 +156,22 @@ interface SetlistUpdateData {
   };
 }
 
-// Function to update setlist details
 export async function updateSetlist(
   bandId: string,
   setlistId: string,
   data: SetlistUpdateData
 ): Promise<void> {
   try {
-    const setlistRef = doc(createSetlistRef(bandId), setlistId);
-    await updateDoc(setlistRef, {
+    console.log('Updating setlist:', { bandId, setlistId, data });
+    const setlistRef = doc(getSetlistsCollection(bandId), setlistId);
+    
+    const updateData = {
       ...data,
       updatedAt: serverTimestamp()
-    });
+    };
+    
+    await updateDoc(setlistRef, updateData);
+    console.log('Setlist updated successfully');
   } catch (error) {
     console.error('Error updating setlist:', error);
     throw error;

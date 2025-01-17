@@ -1,7 +1,7 @@
 //src\app\bands\create\page.tsx
 'use client';
 
-import { useState, useEffect } from 'react'; // Add useEffect
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
 import { createBand } from '@/lib/services/firebase/bands';
@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 export default function CreateBandPage() {
   const router = useRouter();
-  const { user, profile, isProfileComplete } = useAuth();
+  const { user, requireProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -23,57 +23,46 @@ export default function CreateBandPage() {
     youtube: ''
   });
 
-  // Add this useEffect at the top of your component
+  // Check profile requirement once on mount
+  const { validateProfile } = useAuth();
+
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    if (!profile || !isProfileComplete) {
-      router.push('/profile-setup');
-      return;
-    }
-  }, [user, profile, isProfileComplete, router]);
-
-  // If we're checking profile, show loading state
-  if (!user || !profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
+    validateProfile();
+  }, []);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
+  
     setIsLoading(true);
     setError('');
-
+  
     try {
+      console.log('Starting band creation process...');
       const bandData = {
-      name: formData.name,
-      description: formData.description,
-      imageUrl: formData.imageUrl,
-      socialLinks: {
-        facebook: formData.facebook,
-        instagram: formData.instagram,
-        twitter: formData.twitter,
-        youtube: formData.youtube
-      }
+        name: formData.name,
+        description: formData.description,
+        imageUrl: formData.imageUrl,
+        socialLinks: {
+          facebook: formData.facebook,
+          instagram: formData.instagram,
+          twitter: formData.twitter,
+          youtube: formData.youtube
+        }
       };
-
+  
+      console.log('Calling createBand with data:', bandData);
       await createBand(user.uid, bandData);
-      // Navigate back to home page instead of the band page
+      console.log('Band creation completed successfully');
       router.push('/home');
     } catch (error) {
+      console.error('Detailed error in handleSubmit:', error);
       if (error instanceof Error) {
-      setError(error.message || 'Failed to create band');
+        setError(error.message || 'Failed to create band');
       } else {
-      setError('Failed to create band');
+        setError('Failed to create band');
       }
+    } finally {
       setIsLoading(false);
     }
   };
@@ -85,6 +74,15 @@ export default function CreateBandPage() {
       [name]: value
     }));
   };
+
+  // Loading state check
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-900 p-4">

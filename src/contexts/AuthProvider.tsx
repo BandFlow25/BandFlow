@@ -1,19 +1,20 @@
-//src\contexts\auth\AuthProvider.tsx
 'use client';
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
-import { getUserProfile, UserProfile } from "@/lib/services/firebase/auth";
+import { createUserProfile, getUserProfile, UserProfile } from "@/lib/services/firebase/auth";
+import { useRouter } from 'next/navigation';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   isLoading: boolean;
-  needsProfile: boolean;
-  isProfileComplete: boolean;  // Add this
+  setProfile: (profile: UserProfile | null) => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  requireProfile: () => boolean;
+  validateProfile: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,15 +23,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
-  const isProfileComplete = (profile: UserProfile | null): boolean => {
-    return !!(
-      profile &&
-      profile.displayName?.trim() &&
-      profile.fullName?.trim() &&
-      profile.postcode?.trim() &&
-      profile.instruments?.length > 0
-    );
+  const validateProfile = (): boolean => {
+    if (!user) {
+      router.push('/login');
+      return false;
+    }
+
+    if (!profile?.hasProfile) {
+      router.push('/profile-setup');
+      return false;
+    }
+
+    return true;
+  };
+
+  const requireProfile = (): boolean => {
+    return validateProfile();
+  };
+
+  const login = async (email: string, password: string): Promise<void> => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    setUser(user);
+
+    const userProfile = await getUserProfile(user.uid);
+    setProfile({
+      uid: user.uid,
+      email: user.email || '',
+      hasProfile: userProfile?.hasProfile ?? false,
+      displayName: userProfile?.displayName || '',
+      fullName: userProfile?.fullName || '',
+      postcode: userProfile?.postcode || '',
+      instruments: userProfile?.instruments || [],
+      avatar: userProfile?.avatar || '',
+      firstName: userProfile?.firstName || '',
+      lastName: userProfile?.lastName || '',
+      createdAt: userProfile?.createdAt || new Date(),
+      updatedAt: userProfile?.updatedAt || new Date(),
+    });
+  };
+
+  const logout = async () => {
+    await auth.signOut();
+    setUser(null);
+    setProfile(null);
   };
 
   useEffect(() => {
@@ -39,12 +77,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
 
       if (user) {
-        try {
-          const userProfile = await getUserProfile(user.uid);
-          setProfile(userProfile);
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-          setProfile(null);
+        const userProfile = await getUserProfile(user.uid);
+
+        if (userProfile) {
+          setProfile({
+            uid: user.uid,
+            email: user.email || '',
+            hasProfile: userProfile.hasProfile ?? false,
+            displayName: userProfile.displayName || '',
+            fullName: userProfile.fullName || '',
+            postcode: userProfile.postcode || '',
+            instruments: userProfile.instruments || [],
+            avatar: userProfile.avatar || '',
+            firstName: userProfile.firstName || '',
+            lastName: userProfile.lastName || '',
+            createdAt: userProfile.createdAt || new Date(),
+            updatedAt: userProfile.updatedAt || new Date(),
+          });
+        } else {
+          // Create a default profile if it doesn't exist
+          await createUserProfile(user, { hasProfile: false });
+          setProfile({
+            uid: user.uid,
+            email: user.email || '',
+            hasProfile: false,
+            displayName: '',
+            fullName: '',
+            postcode: '',
+            instruments: [],
+            avatar: '',
+            firstName: '',
+            lastName: '',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
         }
       } else {
         setProfile(null);
@@ -56,32 +122,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const logout = async () => {
-    await auth.signOut();
-  };
-
-  const needsProfile = !!user && !profile;
-
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile, 
-      isLoading, 
-      needsProfile,
-      isProfileComplete: profile ? isProfileComplete(profile) : false,
-      login, 
-      logout 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        isLoading,
+        setProfile,
+        login,
+        logout,
+        requireProfile,
+        validateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
-
-
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

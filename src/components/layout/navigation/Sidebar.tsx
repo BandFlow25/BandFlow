@@ -1,41 +1,46 @@
-// src/components/layout/navigation/Sidebar.tsx
+// components/layout/navigation/Sidebar.tsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthProvider';
 import { useBand } from '@/contexts/BandProvider';
-import { useSongs } from '@/contexts/SongProvider';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { getBandMemberRole, isUserBandAdmin } from '@/lib/services/firebase/bands';
+import { getBandMemberRole } from '@/lib/services/firebase/bands';
+import { SongHelpers } from '@/lib/services/bandflowhelpers/SongHelpers';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
   Music, Settings, LogOut, User,
   Menu, X, ChevronDown, ChevronRight,
-  BookOpen, Calendar, ListMusic, ImageIcon, Shuffle
+  BookOpen, Calendar, ListMusic, ImageIcon, Shuffle, GitBranch, Library
 } from 'lucide-react';
-
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [songMenuOpen, setSongMenuOpen] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null); // State for the user role
+  const [userRole, setUserRole] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile, logout } = useAuth();
-  const { activeBand, setActiveBandId } = useBand();
-  const { songs } = useSongs();
+  const { activeBand, isAdmin, clearActiveBand } = useBand();
   const searchParams = useSearchParams();
-  const [isAdmin, setIsAdmin] = useState(false); // State to track if the user is an admin
+  const [songCounts, setSongCounts] = useState({
+    total: 0,
+    suggested: 0,
+    voting: 0,
+    review: 0,
+    practice: 0,
+    playbook: 0
+  });
+
   useEffect(() => {
     const handleResize = () => {
       const isLargeScreen = window.innerWidth >= 1024;
       setIsOpen(isLargeScreen);
     };
 
-    handleResize(); // Initial check
+    handleResize();
     window.addEventListener('resize', handleResize);
 
-    // Clean listeners on unmount
     return () => {
       window.removeEventListener('resize', handleResize);
     };
@@ -46,24 +51,26 @@ export default function Sidebar() {
       getBandMemberRole(activeBand.id, user.uid)
         .then((role) => setUserRole(role))
         .catch((err) => console.error('Error fetching user role:', err));
-
-      isUserBandAdmin(user.uid, activeBand.id)
-        .then((adminStatus) => setIsAdmin(adminStatus))
-        .catch((err) => console.error('Error checking admin status:', err));
     }
   }, [activeBand, user]);
 
-  const getSongCountByStatus = (status: string) => {
-    return songs.filter(song => song.status === status).length;
-  };
+  /** Get song counts when active band changes */
+  useEffect(() => {
+    if (activeBand?.id) {
+      SongHelpers.getAllSongCounts(activeBand.id)
+        .then(setSongCounts)
+        .catch(console.error);
+    }
+  }, [activeBand?.id]);
 
   const handleSwitchBand = () => {
-    setActiveBandId(null);
+    clearActiveBand();
     router.push('/home');
   };
 
   const handleLogout = async () => {
     try {
+      clearActiveBand();
       await logout();
       router.push('/login');
     } catch (err) {
@@ -73,63 +80,75 @@ export default function Sidebar() {
 
   if (!activeBand) return null;
 
-  const playbookCount = getSongCountByStatus('PLAYBOOK');
-
-  const songMenuItems = [
+  const menuSections = [
     {
-      name: 'All Songs',
-      href: `/bands/${activeBand.id}/songs`,
-      icon: <Music className="w-4 h-4" />,
-      count: songs.length,
-      highlight: false
+      title: 'Playbook',
+      icon: <Library />,
+      items: [
+        {
+          name: 'Active Songs',
+          href: `/bands/${activeBand.id}/playbook`,
+          count: songCounts.playbook
+        },
+        {
+          name: 'Setlists',
+          href: `/bands/${activeBand.id}/setlists`
+        }
+      ]
     },
     {
-      name: 'Suggestions',
-      href: `/bands/${activeBand.id}/songs?view=suggestions`,
-      count: getSongCountByStatus('SUGGESTED'),
-      highlight: true
-    },
-    {
-      name: 'In Voting',
-      href: `/bands/${activeBand.id}/songs?view=voting`,
-      count: getSongCountByStatus('VOTING'),
-      highlight: true
-    },
-    {
-      name: 'In Review',
-      href: `/bands/${activeBand.id}/songs?view=review`,
-      count: getSongCountByStatus('REVIEW'),
-      highlight: true
-    },
-    {
-      name: 'Practice List',
-      href: `/bands/${activeBand.id}/songs?view=practice`,
-      count: getSongCountByStatus('PRACTICE'),
-      highlight: true
-    },
+      title: 'Pipeline',
+      icon: <GitBranch />,
+      items: [
+        {
+          name: 'Suggestions',
+          href: `/bands/${activeBand.id}/pipeline/suggestions`,
+          count: songCounts.voting + songCounts.suggested,
+          highlight: true
+        },
+        {
+          name: 'Practice',
+          href: `/bands/${activeBand.id}/pipeline/practice`,
+          count: songCounts.practice
+        }
+      ]
+    }
   ];
 
   const isMenuItemActive = (href: string) => {
-    // For the Play Book route (main band page)
     if (href === `/bands/${activeBand.id}`) {
       return pathname === `/bands/${activeBand.id}`;
     }
 
-    // For songs routes with view parameter
     if (href.includes('?view=')) {
       const itemView = href.split('?view=')[1];
       const currentView = searchParams?.get('view');
       return currentView === itemView;
     }
 
-    // For All Songs (no view parameter)
     if (href === `/bands/${activeBand.id}/songs`) {
       return pathname === `/bands/${activeBand.id}/songs` && !searchParams?.get('view');
     }
 
-    // For other routes
     return pathname === href;
   };
+
+  /// TODO: Check with Claude - think this comes from types?
+  const songMenuItems = [
+    {
+      name: 'Suggestions',
+      href: `/bands/${activeBand.id}/pipeline/suggestions`,
+      count: songCounts.voting + songCounts.suggested,
+      highlight: true,
+      icon: <ChevronRight />
+    },
+    {
+      name: 'Practice',
+      href: `/bands/${activeBand.id}/pipeline/practice`,
+      count: songCounts.practice,
+      icon: <ChevronRight />
+    }
+  ];
 
   return (
     <>
@@ -146,7 +165,7 @@ export default function Sidebar() {
 
       <aside className={cn(
         "fixed top-0 left-0 h-full w-64 bg-gray-900 text-white z-40 transform transition-transform duration-200 ease-in-out border-r border-gray-800 flex flex-col",
-        "pt-12 lg:pt-0", // Add padding-top on mobile, remove on desktop
+        "pt-12 lg:pt-0",
         {
           "translate-x-0": isOpen,
           "-translate-x-full": !isOpen,
@@ -155,9 +174,13 @@ export default function Sidebar() {
         }
       )}>
 
-        {/* Updated header section */}
-        <div className="p-4 border-b border-gray-800">
-          <div className="flex items-center gap-3 mb-3">
+
+        {/* Update the header section in Sidebar.tsx */}
+        <div className="p-4 border-b border-gray-800 flex items-center">
+          <Link
+            href={`/bands/${activeBand.id}`}
+            className="flex items-center flex-1 gap-3 hover:bg-gray-800 rounded-lg p-2 transition-colors"
+          >
             <Image
               src="/bf-logo.png"
               alt="BandFlow"
@@ -165,37 +188,39 @@ export default function Sidebar() {
               height={32}
               className="rounded-full"
             />
-            <div className="flex-1">
+            <div>
               <h1 className="text-lg font-bold text-white leading-tight">Band Flow 25</h1>
               <h2 className="text-sm text-gray-400">{activeBand.name}</h2>
             </div>
-            <div className="flex flex-col gap-2">
-              {isAdmin && (
-                <Link
-                  href={`/bands/${activeBand.id}/settings`}
-                  className="text-blue-500 hover:text-blue-400"
-                  title="Band Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </Link>
-              )}
-              <button
-                onClick={handleSwitchBand}
-                className="text-orange-500 hover:text-orange-400"
-                title="Select Band"
+          </Link>
+          <div className="flex flex-col gap-2 ml-2">
+            {isAdmin && (
+              <Link
+                href={`/bands/${activeBand.id}/settings`}
+                className="p-2 text-blue-500 hover:text-blue-400 hover:bg-gray-800 rounded-lg transition-colors"
+                title="Band Settings"
               >
-                <Shuffle className="w-5 h-5" />
-              </button>
-            </div>
+                <Settings className="w-5 h-5" />
+              </Link>
+            )}
+            <button
+              onClick={handleSwitchBand}
+              className="p-2 text-orange-500 hover:text-orange-400 hover:bg-gray-800 rounded-lg transition-colors"
+              title="Select Band"
+            >
+              <Shuffle className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
+
+        {/* Menu Context */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <Link
-            href={`/bands/${activeBand.id}`}
+            href={`/bands/${activeBand.id}/playbook`}
             className={cn(
               "flex items-center justify-between px-2 py-2 rounded-lg mb-4",
-              pathname === `/bands/${activeBand.id}`
+              pathname === `/bands/${activeBand.id}/playbook`
                 ? "bg-orange-500 text-white"
                 : "text-gray-300 hover:text-white hover:bg-gray-800"
             )}
@@ -204,17 +229,18 @@ export default function Sidebar() {
               <BookOpen className="w-5 h-5 mr-2" />
               <span>Play Book</span>
             </div>
-            {playbookCount > 0 && (
+            {songCounts.playbook > 0 && (
               <span className={cn(
                 "ml-2 px-2 py-0.5 rounded-full text-xs",
-                pathname === `/bands/${activeBand.id}`
+                pathname === `/bands/${activeBand.id}/playbook`
                   ? "bg-white/20"
                   : "bg-gray-700/50"
               )}>
-                {playbookCount}
+                {songCounts.playbook}
               </span>
             )}
           </Link>
+
           <Link
             href={`/bands/${activeBand.id}/setlists`}
             className={cn(
@@ -229,6 +255,7 @@ export default function Sidebar() {
               <span>Setlists</span>
             </div>
           </Link>
+
           <div className="space-y-4">
             <div>
               <button
@@ -306,22 +333,34 @@ export default function Sidebar() {
           </div>
         </nav>
 
+
+        {/* Footer header section in Sidebar.tsx */}
         <div className="mt-auto p-4 border-t border-gray-800 bg-gray-800/50">
-          <Link href="/profile-setup" className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
               <User className="w-6 h-6 text-orange-500" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium text-white truncate">
                 {profile?.displayName || user?.email}
               </p>
               <p className="text-xs text-gray-400">{userRole || 'Unknown Role'}</p>
             </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <Settings className="w-6 h-6 text-blue-500 hover:text-blue-400" />
-              <LogOut className="w-6 h-6 text-orange-500 hover:text-orange-400" />
+            <div className="flex items-center gap-2">
+              <Link
+                href="/profile-setup"
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Settings className="w-5 h-5 text-blue-500 hover:text-blue-400" />
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-5 h-5 text-orange-500 hover:text-orange-400" />
+              </button>
             </div>
-          </Link>
+          </div>
         </div>
       </aside>
     </>

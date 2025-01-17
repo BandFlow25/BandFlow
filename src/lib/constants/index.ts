@@ -26,7 +26,11 @@ export const COLLECTIONS = {
   USERS: 'bf_users',
   BANDS: 'bf_bands',
   BASE_SONGS: 'bf_base_songs',
-  // These are subcollections under BANDS
-  BAND_SONGS: 'songs',     // NEW: subcollection path
-  SETLISTS: 'setlists',    // Existing subcollection path
+  // Subcollections under BANDS
+  BAND_SONGS: 'songs',      // bf_bands/{bandId}/songs
+  BAND_MEMBERS: 'members',  // bf_bands/{bandId}/members
+  SETLISTS: 'setlists',    // bf_bands/{bandId}/setlists
+
+  //BAND_SONGS was previously bf_band_songs - queried with both bandid & songid
+  //BAND_MEMBERS was previously bf_band_members
 } as const;

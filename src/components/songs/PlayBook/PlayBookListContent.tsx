@@ -1,5 +1,5 @@
 // components/songs/PlayBook/PlayBookList/PlayBookListContent.tsx
-import { PlayBookSongCard } from '../PlayBookSongCard';
+import { PlayBookSongCard } from 'src/components/songs/SongCard/PlayBookSongCard';
 import type { BandSong } from '@/lib/types/song';
 import { Loader2 } from 'lucide-react';
 

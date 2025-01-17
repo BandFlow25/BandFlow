@@ -34,18 +34,20 @@ export default function CreateSetlistModal({
 }: CreateSetlistModalProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { currentBandId } = useBand();
+  const { activeBand } = useBand();
   
   const [name, setName] = useState(existingSetlist?.name || '');
   const [numberOfSets, setNumberOfSets] = useState(existingSetlist?.format.numSets || 2);
   const [durationPerSet, setDurationPerSet] = useState(existingSetlist?.format.setDuration || 45);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
-    if (!user || !currentBandId) {
-      console.error("User or band ID is missing.");
+    if (!user || !activeBand?.id) {
+      setError("Not authorized to perform this action.");
       return;
     }
 
@@ -54,7 +56,7 @@ export default function CreateSetlistModal({
     try {
       if (existingSetlist) {
         // Update existing setlist
-        await updateSetlist(currentBandId, existingSetlist.id, {
+        await updateSetlist(activeBand.id, existingSetlist.id, {
           name,
           format: {
             numSets: numberOfSets,
@@ -65,7 +67,7 @@ export default function CreateSetlistModal({
         onClose();
       } else {
         // Create new setlist
-        const setlistId = await createSetlist(currentBandId, user.uid, {
+        const setlistId = await createSetlist(activeBand.id, user.uid, {
           name,
           format: {
             numSets: numberOfSets,
@@ -80,10 +82,11 @@ export default function CreateSetlistModal({
         });
 
         onClose();
-        router.push(`/bands/${currentBandId}/setlists/${setlistId}`);
+        router.push(`/bands/${activeBand.id}/setlists/${setlistId}`);
       }
     } catch (error) {
-      console.error(existingSetlist ? "Error updating setlist:" : "Error creating setlist:", error);
+      console.error('Error handling setlist:', error);
+      setError('Failed to create setlist. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -102,6 +105,12 @@ export default function CreateSetlistModal({
                 <span>{selectedSongs.length} songs selected</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500 text-red-400 p-3 rounded-lg">
+            {error}
           </div>
         )}
 
@@ -157,6 +166,7 @@ export default function CreateSetlistModal({
               type="button"
               variant="outline"
               onClick={onClose}
+              disabled={isSubmitting}
               className="text-gray-300 hover:text-white"
             >
               Cancel

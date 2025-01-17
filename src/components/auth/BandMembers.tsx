@@ -6,6 +6,7 @@ import type { BandMember } from '@/lib/types/band';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import { Share2, UserPlus, AlertTriangle } from 'lucide-react';
+import { COLLECTIONS } from '@/lib/constants';
 
 interface BandMembersProps {
   bandId: string;
@@ -50,7 +51,7 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
   // Load all users (DEV ONLY)
   const loadAllUsers = async () => {
     try {
-      const usersRef = collection(db, 'bf_users');
+      const usersRef = collection(db, COLLECTIONS.USERS);
       const usersSnap = await getDocs(usersRef);
       const users = usersSnap.docs.map(doc => ({
         ...doc.data(),
@@ -63,7 +64,7 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
       setError('Failed to load users');
     }
   };
-
+  
   const handleUserSelect = (userId: string) => {
     setSelectedUsers(prev => 
       prev.includes(userId) 
@@ -71,7 +72,6 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
         : [...prev, userId]
     );
   };
-
   const handleAddMembers = async () => {
     try {
       setError('');
@@ -96,7 +96,6 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
       setError('Failed to add members');
     }
   };
-
   const toggleMemberRole = async (userId: string, currentRole: string) => {
     try {
       const newRole = currentRole === 'admin' ? 'member' : 'admin';
@@ -109,7 +108,6 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
       setError('Failed to update member role');
     }
   };
-
   const removeMember = async (userId: string) => {
     try {
       await removeBandMember(bandId, userId);
@@ -118,7 +116,7 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
       console.error('Error removing member:', err);
       setError('Failed to remove member');
     }
-  };
+  }; 
 
   if (isLoading) {
     return <div className="text-gray-400">Loading members...</div>;

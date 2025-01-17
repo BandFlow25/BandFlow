@@ -1,62 +1,88 @@
 // components/songs/SongList/index.tsx
 import { useMemo, useState } from 'react';
 import { useSongs } from '@/contexts/SongProvider';
-import { 
-  SONG_LIST_LABELS,
-  STATUS_TO_LIST_TYPE,  // Add this import
-  type SongListType,    // Change this from SongListTypeValue
-  type BandSong 
-} from '@/lib/types/song';
-import { SongListContent } from './SongListContent';
-import { SongListHeader } from './SongListHeader';
+import { SearchHeader } from 'src/components/songs/Shared/SearchHeader';
 import { Filter as FilterIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SongListContent } from './SongListContent';
 import { useAuth } from '@/contexts/AuthProvider';
-import { useBand } from '@/contexts/BandProvider';
-
-// Move this outside the component
-const calculateSongScore = (song: BandSong, memberCount: number): number => {
-  if (!song.votes) return 0;
-  const totalVotes = Object.values(song.votes).reduce((sum, vote) => sum + vote.value, 0);
-  // Use votingMemberCount if available (for Review status), otherwise use current memberCount
-  const maxPossibleScore = (song.votingMemberCount || memberCount) * 5;
-  return (totalVotes / maxPossibleScore) * 100;
-};
+import { 
+  SONG_LIST_TYPES,  
+  SONG_STATUS,
+  SONG_LIST_LABELS,
+  type SongListType
+} from '@/lib/types/song';
 
 interface SongListProps {
   type: SongListType;
-  showCount?: boolean;
 }
 
 export function SongList({ type }: SongListProps) {
   const { songs, isLoading, error, searchQuery, setSearchQuery } = useSongs();
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const { user } = useAuth();
-  const { memberCount } = useBand();
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   
   const filteredAndSortedSongs = useMemo(() => {
     let filtered = songs;
 
-    // Apply status filters first
-    if (type === 'all') {
-      if (statusFilter) {
-        filtered = songs.filter(song => song.status === statusFilter);
-      } else {
-        // For ALL type without status filter, exclude DISCARDED and PARKED
+    // First apply type-specific filtering
+    switch(type) {
+      case SONG_LIST_TYPES.ALL:
+        // First, filter out all PLAYBOOK songs
+        filtered = songs.filter(song => song.status !== SONG_STATUS.PLAYBOOK);
+        
+        // Then apply status filter if present
+        if (statusFilter) {
+          filtered = filtered.filter(song => song.status === statusFilter);
+        } else {
+          // If no status filter, show all active songs (not parked or discarded)
+          filtered = filtered.filter(song => 
+            song.status !== SONG_STATUS.DISCARDED && 
+            song.status !== SONG_STATUS.PARKED
+          );
+        }
+        break;
+
+      case SONG_LIST_TYPES.SUGGESTIONS:
+        filtered = songs
+          .filter(song => song.status === SONG_STATUS.SUGGESTED)
+          .sort((a, b) => a.createdAt.seconds - b.createdAt.seconds); // Oldest first
+        break;
+
+        case SONG_LIST_TYPES.VOTING:
+          filtered = songs
+            .filter(song => song.status === SONG_STATUS.VOTING)
+            .sort((a, b) => {
+              // We should always have a user at this point, but let's be safe
+              if (!user?.uid) return 0;
+              
+              const aVoted = Boolean(a.votes?.[user.uid]);
+              const bVoted = Boolean(b.votes?.[user.uid]);
+              if (!aVoted && bVoted) return -1;
+              if (aVoted && !bVoted) return 1;
+              return 0;
+            });
+          break;
+
+      case SONG_LIST_TYPES.REVIEW:
+        filtered = songs
+          .filter(song => song.status === SONG_STATUS.REVIEW);
+        break;
+
+      case SONG_LIST_TYPES.PRACTICE:
+        filtered = songs
+          .filter(song => song.status === SONG_STATUS.PRACTICE);
+        break;
+
+      default:
         filtered = songs.filter(song => 
-          song.status !== 'DISCARDED' && song.status !== 'PARKED'
+          song.status === Object.entries(SONG_LIST_TYPES)
+            .find(([_, value]) => value === type)?.[0]
         );
-      }
-    } else {
-      // For specific views, find the matching status using our mapping
-      const statusForType = Object.entries(STATUS_TO_LIST_TYPE)
-        .find(([_, listType]) => listType === type)?.[0];
-      if (statusForType) {
-        filtered = songs.filter(song => song.status === statusForType);
-      }
+        break;
     }
     
-    // Apply search filter
+    // Then apply search filter
     if (searchQuery) {
       const search = searchQuery.toLowerCase();
       filtered = filtered.filter(song =>
@@ -65,46 +91,22 @@ export function SongList({ type }: SongListProps) {
       );
     }
 
-    // Sort based on view type
-    if (type === 'voting' && user) {
-      return filtered.sort((a, b) => {
-        const aVoted = !!a.votes?.[user.uid];
-        const bVoted = !!b.votes?.[user.uid];
-        
-        if (aVoted === bVoted) {
-          return 0;
-        }
-        return aVoted ? 1 : -1;
-      });
-    } else if (type === 'review') {
-      return filtered.sort((a, b) => {
-        const scoreA = calculateSongScore(a, memberCount);
-        const scoreB = calculateSongScore(b, memberCount);
-        return scoreB - scoreA; // Highest scores first
-      });
-    }
-
     return filtered;
-  }, [songs, searchQuery, type, statusFilter, user, memberCount]);
+  }, [songs, type, statusFilter, searchQuery, user?.uid]);
 
-  const handleSongDeleted = () => {
-    // The SongsProvider will automatically refresh the list
-    // through the Firestore realtime subscription
+  const getPlaceholder = () => {
+    return `Search ${SONG_LIST_LABELS[type]}...`;
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-gray-900 px-2 sm:px-4 pt-4">
-      <div className="flex flex-col gap-4">
-        <SongListHeader
-          title={SONG_LIST_LABELS[type]}
-          count={filteredAndSortedSongs.length}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-        
-        {/* Status filter for All Songs view */}
-        {type === 'all' && (
-          <div className="flex gap-2 items-center">
+    <div className="flex flex-col">
+      <SearchHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder={getPlaceholder()}
+      >
+        {type === SONG_LIST_TYPES.ALL && (
+          <div className="flex gap-2 items-center mt-3">
             <FilterIcon className="w-4 h-4 text-gray-400" />
             <div className="flex gap-2">
               <button
@@ -119,10 +121,10 @@ export function SongList({ type }: SongListProps) {
                 Active
               </button>
               <button
-                onClick={() => setStatusFilter('PARKED')}
+                onClick={() => setStatusFilter(SONG_STATUS.PARKED)}
                 className={cn(
                   "px-3 py-1 rounded-full text-sm",
-                  statusFilter === 'PARKED'
+                  statusFilter === SONG_STATUS.PARKED
                     ? "bg-orange-500 text-white"
                     : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
                 )}
@@ -130,10 +132,10 @@ export function SongList({ type }: SongListProps) {
                 Parked
               </button>
               <button
-                onClick={() => setStatusFilter('DISCARDED')}
+                onClick={() => setStatusFilter(SONG_STATUS.DISCARDED)}
                 className={cn(
                   "px-3 py-1 rounded-full text-sm",
-                  statusFilter === 'DISCARDED'
+                  statusFilter === SONG_STATUS.DISCARDED
                     ? "bg-orange-500 text-white"
                     : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
                 )}
@@ -143,15 +145,14 @@ export function SongList({ type }: SongListProps) {
             </div>
           </div>
         )}
-      </div>
-  
-      <div className="flex-1 overflow-y-auto min-h-0 mt-4">
+      </SearchHeader>
+
+      <div className="flex-1 overflow-y-auto">
         <SongListContent
           songs={filteredAndSortedSongs}
           isLoading={isLoading}
           error={error}
           listType={type}
-          onSongDeleted={handleSongDeleted}
         />
       </div>
     </div>

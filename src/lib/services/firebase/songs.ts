@@ -5,40 +5,189 @@ import { BaseSong, BandSong, SongStatus, RAGStatus } from '@/lib/types/song';
 import { auth } from '@/lib/config/firebase';
 import { getSongMetadata } from '@/lib/services/ai/SongMetadata';
 import { COLLECTIONS } from '@/lib/constants';
+
 // Helper function to get band songs collection reference
 const getBandSongsCollection = (bandId: string) => {
   return collection(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_SONGS);
 };
 
-
-//TODO: We get rid of this.
-const BF_BAND_MEMBERS = 'bf_band_members';
-
-// Helper function to check band membership
-const isBandMember = async (userId: string, bandId: string): Promise<boolean> => {
-  const memberQuery = query(
-    collection(db, 'bf_band_members'),
-    where('userId', '==', userId),
-    where('bandId', '==', bandId)
-  );
-
-  const memberSnap = await getDocs(memberQuery);
-  return !memberSnap.empty;
+// Helper function to get band members collection reference
+const getBandMembersCollection = (bandId: string) => {
+  return collection(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_MEMBERS);
 };
-// Helper function to check if user is band admin
-async function isBandAdmin(userId: string, bandId: string): Promise<boolean> {
-  const memberQuery = query(
-    collection(db, BF_BAND_MEMBERS),
-    where('userId', '==', userId),
-    where('bandId', '==', bandId),
-    where('role', '==', 'admin')
-  );
 
-  const memberSnap = await getDocs(memberQuery);
-  return !memberSnap.empty;
+
+
+
+
+
+
+export async function addVote(
+  bandId: string,
+  songId: string,
+  userId: string,
+  score: number
+): Promise<void> {
+  console.log('AddVote: Starting with params:', {
+    bandId,
+    songId,
+    userId,
+    score,
+    currentAuthUser: auth.currentUser?.uid // Add this to check auth state
+  });
+  
+  try {
+    const songRef = doc(getBandSongsCollection(bandId), songId);
+    console.log('AddVote: Document path:', songRef.path);
+
+    // Check if user is band member before attempting update
+    const memberRef = doc(getBandMembersCollection(bandId), userId);
+    const memberDoc = await getDoc(memberRef);
+    
+    console.log('AddVote: Member check:', {
+      memberPath: memberRef.path,
+      exists: memberDoc.exists(),
+      role: memberDoc.data()?.role
+    });
+
+    if (!memberDoc.exists()) {
+      throw new Error('User is not a band member');
+    }
+
+    const songDoc = await getDoc(songRef);
+    if (!songDoc.exists()) {
+      throw new Error('Song not found');
+    }
+
+    const songData = songDoc.data();
+    console.log('AddVote: Current song data:', {
+      id: songDoc.id,
+      status: songData.status,
+      votes: songData.votes || {}
+    });
+
+    const updatedVotes = {
+      ...(songData.votes || {}),
+      [userId]: {
+        value: score,
+        updatedAt: serverTimestamp()
+      }
+    };
+
+    const membersSnapshot = await getDocs(getBandMembersCollection(bandId));
+    const totalMembers = membersSnapshot.size;
+    const totalVotes = Object.keys(updatedVotes).length;
+
+    console.log('AddVote: Vote counts:', {
+      totalMembers,
+      totalVotes,
+      hasVoted: Object.keys(updatedVotes)
+    });
+
+    let newStatus = songData.status;
+    if (songData.status === 'SUGGESTED') {
+      newStatus = 'VOTING';
+    } else if (songData.status === 'VOTING' && totalVotes >= totalMembers) {
+      newStatus = 'REVIEW';
+    }
+
+    const updateData = {
+      votes: updatedVotes,
+      status: newStatus,
+      updatedAt: serverTimestamp()
+    };
+
+    console.log('AddVote: Updating document:', updateData);
+    await updateDoc(songRef, updateData);
+    console.log('AddVote: Successfully updated document');
+
+  } catch (error) {
+    console.error('AddVote: Error with full context:', {
+      error,
+      bandId,
+      songId,
+      userId,
+      authUid: auth.currentUser?.uid,
+      location: 'songs.addVote'
+    });
+    throw error;
+  }
 }
 
+export async function updateRagStatus(
+  bandId: string,
+  songId: string,
+  userId: string,
+  status: RAGStatus
+): Promise<void> {
+  try {
+    const songRef = doc(getBandSongsCollection(bandId), songId);
+    const songDoc = await getDoc(songRef);
+    
+    if (!songDoc.exists()) {
+      throw new Error('Song not found');
+    }
 
+    await updateDoc(songRef, {
+      [`ragStatus.${userId}`]: {
+        status,
+        updatedAt: serverTimestamp()
+      },
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating RAG status:', error);
+    throw error;
+  }
+}
+
+export async function updateSongStatus(
+  bandId: string,
+  songId: string,
+  userId: string,
+  newStatus: SongStatus
+): Promise<void> {
+  try {
+    const songRef = doc(getBandSongsCollection(bandId), songId);
+    const songDoc = await getDoc(songRef);
+
+    if (!songDoc.exists()) {
+      throw new Error('Song not found');
+    }
+
+    await updateDoc(songRef, {
+      status: newStatus,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating song status:', error);
+    throw error;
+  }
+}
+
+export async function deleteBandSong(
+  bandId: string,
+  songId: string,
+  userId: string
+): Promise<void> {
+  try {
+    const songRef = doc(getBandSongsCollection(bandId), songId);
+    await deleteDoc(songRef);
+  } catch (error) {
+    console.error('Error deleting song:', error);
+    throw error;
+  }
+}
+
+export async function getBandSongs(bandId: string): Promise<BandSong[]> {
+  const songsRef = getBandSongsCollection(bandId);
+  const snapshot = await getDocs(songsRef);
+  
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as BandSong[];
+}
 
 export async function findBaseSongByTitleAndArtist(title: string, artist: string): Promise<BaseSong | null> {
   const songsRef = collection(db, COLLECTIONS.BASE_SONGS);
@@ -52,6 +201,7 @@ export async function findBaseSongByTitleAndArtist(title: string, artist: string
   if (snapshot.empty || !snapshot.docs[0]) return null;
   return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as BaseSong;
 }
+
 export async function findBandSongByBaseSongId(bandId: string, baseSongId: string): Promise<BandSong | null> {
   const songsRef = getBandSongsCollection(bandId);
   const q = query(songsRef, where('baseSongId', '==', baseSongId));
@@ -60,22 +210,19 @@ export async function findBandSongByBaseSongId(bandId: string, baseSongId: strin
   if (snapshot.empty || !snapshot.docs[0]) return null;
   return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as BandSong;
 }
+
 export async function addBaseSong(song: Omit<BaseSong, 'id' | 'createdAt' | 'updatedAt' | 'songAddedBy'>): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
-    throw new Error("No authenticated user found to add the song");
+    throw new Error("No authenticated user found");
   }
 
   const songRef = doc(collection(db, COLLECTIONS.BASE_SONGS));
   const timestamp = serverTimestamp();
 
   try {
-    // Log incoming song details
-    console.log('addBaseSong: called with song:', song);
-
     const metadata = await getSongMetadata(song.title, song.artist);
-    console.log('addBaseSong: Metadata received from AI service:', metadata);
-
+    
     const dataToStore = {
       ...song,
       metadata: {
@@ -90,13 +237,11 @@ export async function addBaseSong(song: Omit<BaseSong, 'id' | 'createdAt' | 'upd
       updatedAt: timestamp,
     };
 
-    // Log the final data before storing
-    console.log('addBaseSong: Final data being stored in bf_base_song:', dataToStore);
-
     await setDoc(songRef, dataToStore);
   } catch (error) {
-    console.error('Error adding base song, storing with pending status:', error);
-
+    console.error('Error adding base song:', error);
+    
+    // Fallback to storing without metadata
     const fallbackData = {
       ...song,
       metadataStatus: 'pending',
@@ -104,8 +249,6 @@ export async function addBaseSong(song: Omit<BaseSong, 'id' | 'createdAt' | 'upd
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-
-    console.log('addBaseSong: Fallback data being stored in bf_base_song:', fallbackData);
 
     await setDoc(songRef, fallbackData);
   }
@@ -120,7 +263,6 @@ export async function addBandSong(
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) throw new Error("No authenticated user found");
-  if (!(await isBandMember(user.uid, bandId))) throw new Error("User is not a member of this band");
 
   const baseSong = await getDoc(doc(db, COLLECTIONS.BASE_SONGS, baseSongId));
   if (!baseSong.exists()) throw new Error('Base song not found');
@@ -141,76 +283,9 @@ export async function addBandSong(
   return bandSongRef.id;
 }
 
-
-export async function addVote(
-  songId: string,
-  userId: string,
-  score: number
-): Promise<void> {
-  try {
-    const songRef = doc(db, COLLECTIONS.BAND_SONGS, songId);
-    const songDoc = await getDoc(songRef);
-    
-    if (!songDoc.exists()) {
-      throw new Error('Song not found');
-    }
-
-    const songData = songDoc.data();
-    const bandId = songData.bandId;
-
-    // Verify band membership
-    if (!(await isBandMember(userId, bandId))) {
-      throw new Error('User is not a band member');
-    }
-
-    const timestamp = serverTimestamp();
-    const updatedVotes = {
-      ...songData.votes,
-      [userId]: { 
-        value: score,
-        updatedAt: timestamp 
-      }
-    };
-
-    // Get band member count
-    const membersQuery = query(
-      collection(db, BF_BAND_MEMBERS),
-      where('bandId', '==', bandId)
-    );
-    const membersSnapshot = await getDocs(membersQuery);
-    const totalMembers = membersSnapshot.size;
-    const totalVotes = Object.keys(updatedVotes).length;
-
-    // If moving to review, store the member count
-    const updateData: Partial<BandSong> = {
-      votes: {
-      ...songData.votes,
-      [userId]: {
-        value: score,
-        updatedAt: Timestamp.now()
-      }
-      },
-      updatedAt: Timestamp.now()
-    };
-
-    if (totalVotes >= totalMembers) {
-      updateData.status = 'REVIEW';
-      updateData.votingMemberCount = totalMembers; // Store the count when moving to review
-    } else {
-      updateData.status = 'VOTING';
-    }
-
-    await updateDoc(songRef, updateData);
-    
-  } catch (error) {
-    console.error('Detailed vote error:', error);
-    throw error;
-  }
-}
-
 export async function fetchSongDetails(bandId: string, songId: string): Promise<BandSong | null> {
   try {
-    const songDoc = await getDoc(doc(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_SONGS, songId));
+    const songDoc = await getDoc(doc(getBandSongsCollection(bandId), songId));
     if (!songDoc.exists()) return null;
     return { id: songDoc.id, ...songDoc.data() } as BandSong;
   } catch (error) {
@@ -219,47 +294,9 @@ export async function fetchSongDetails(bandId: string, songId: string): Promise<
   }
 }
 
-export async function updateSongStatus(
-  bandId: string,
-  songId: string,
-  userId: string,
-  newStatus: SongStatus
-): Promise<void> {
-  const songRef = doc(getBandSongsCollection(bandId), songId);
-  const songDoc = await getDoc(songRef);
-
-  if (!songDoc.exists()) throw new Error('Song not found');
-  if (!(await isBandMember(userId, bandId))) throw new Error("User is not a band member");
-
-  await updateDoc(songRef, {
-    status: newStatus,
-    updatedAt: serverTimestamp()
-  });
-}
-
-export async function getBandSongs(bandId: string): Promise<BandSong[]> {
-  const user = auth.currentUser;
-  if (!user) throw new Error("No authenticated user found");
-  if (!(await isBandMember(user.uid, bandId))) throw new Error("User is not a member of this band");
-
-  const songsRef = getBandSongsCollection(bandId);
-  const snapshot = await getDocs(songsRef);
-  
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  })) as BandSong[];
-}
-
 export async function searchBaseSongs(searchQuery: string): Promise<BaseSong[]> {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error("No authenticated user found");
-  }
-
   const songsRef = collection(db, COLLECTIONS.BASE_SONGS);
   const searchLower = searchQuery.toLowerCase();
-
   const snapshot = await getDocs(songsRef);
 
   return snapshot.docs
@@ -277,77 +314,8 @@ export async function checkAllMembersVoted(
   bandId: string,
   votes: Record<string, { value: number; updatedAt: Timestamp }>
 ): Promise<boolean> {
-  const membersQuery = query(
-    collection(db, BF_BAND_MEMBERS),
-    where('bandId', '==', bandId)
-  );
-
-  const membersSnapshot = await getDocs(membersQuery);
+  const membersSnapshot = await getDocs(getBandMembersCollection(bandId));
   const totalMembers = membersSnapshot.size;
   const totalVotes = Object.keys(votes || {}).length;
-
   return totalVotes >= totalMembers;
-}
-
-export async function deleteBandSong(
-  songId: string,
-  userId: string,
-  bandId: string
-): Promise<void> {
-  try {
-    // First check if user is admin
-    const memberQuery = query(
-      collection(db, BF_BAND_MEMBERS),
-      where('userId', '==', userId),
-      where('bandId', '==', bandId),
-      where('role', '==', 'admin')
-    );
-
-    const memberSnap = await getDocs(memberQuery);
-    if (memberSnap.empty) {
-      throw new Error('Only band admins can delete songs');
-    }
-
-    const songRef = doc(db, COLLECTIONS.BAND_SONGS, songId);
-    await deleteDoc(songRef);
-
-    console.log('Song deleted successfully');
-  } catch (error) {
-    console.error('Error deleting song:', error);
-    throw error;
-  }
-}
-
-export async function updateRagStatus(
-  songId: string,
-  userId: string,
-  status: RAGStatus
-): Promise<void> {
-  try {
-    const songRef = doc(db, COLLECTIONS.BAND_SONGS, songId);
-    const songDoc = await getDoc(songRef);
-    
-    if (!songDoc.exists()) {
-      throw new Error('Song not found');
-    }
-
-    const songData = songDoc.data();
-    const bandId = songData.bandId;
-
-    // Verify band membership
-    if (!(await isBandMember(userId, bandId))) {
-      throw new Error('User is not a band member');
-    }
-
-    await updateDoc(songRef, {
-      [`ragStatus.${userId}`]: {
-        status,
-        updatedAt: serverTimestamp()
-      },
-      updatedAt: serverTimestamp()
-    });
-  } catch (error) {
-    console.error('Error updating RAG status:', error);
-    throw error;
-  }
 }

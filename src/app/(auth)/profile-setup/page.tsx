@@ -3,23 +3,21 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-//import { Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthProvider';
 import { createUserProfile, getUserProfile } from '@/lib/services/firebase/auth';
 
 const INSTRUMENTS = [
-  'Vocals', 'Guitar', 'Bass', 'Drums', 'Keys', 
+  'Vocals', 'Guitar', 'Bass', 'Drums', 'Keys',
   'Percussion', 'Saxophone', 'Trumpet', 'Other'
 ];
 
 export default function ProfileSetup() {
+  const { user, isLoading, setProfile } = useAuth(); // Access setProfile from AuthProvider
   const router = useRouter();
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedInstruments, setSelectedInstruments] = useState<string[]>([]);
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
   const [isInitialSetup, setIsInitialSetup] = useState(true);
   const [formData, setFormData] = useState({
     displayName: '',
@@ -28,41 +26,58 @@ export default function ProfileSetup() {
     avatar: ''
   });
 
-  // Load existing profile data
   useEffect(() => {
     async function loadProfile() {
+      console.log("Loading profile. User:", user);
+      console.log("Is loading:", isLoading);
+  
+      if (isLoading) return; // Prevent execution while loading
+  
       if (!user) {
+        console.warn("No user found. Redirecting to login.");
         router.push('/login');
         return;
       }
-
+  
       try {
         const profile = await getUserProfile(user.uid);
+        console.log("Profile fetched:", profile);
+  
         if (profile) {
           setFormData({
             displayName: profile.displayName || '',
             fullName: profile.fullName || '',
             postcode: profile.postcode || '',
-            avatar: profile.avatar || ''
+            avatar: profile.avatar || '',
           });
           setSelectedInstruments(profile.instruments || []);
-          // Determine if this is initial setup based on required fields
-          setIsInitialSetup(!profile.displayName || !profile.fullName || !profile.postcode || profile.instruments.length === 0);
+          setIsInitialSetup(
+            !profile.displayName ||
+            !profile.fullName ||
+            !profile.postcode ||
+            profile.instruments.length === 0
+          );
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
-        setError('Failed to load profile data');
-      } finally {
-        setIsLoading(false);
+        console.error("Error loading profile:", error);
+        setError("Failed to load profile data");
       }
     }
-
+  
     loadProfile();
-  }, [user, router]);
+  }, [user, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white">Loading profile...</div>
+      </div>
+    );
+  }
 
   const validateForm = (): boolean => {
-    const errors: {[key: string]: string} = {};
-    
+    const errors: { [key: string]: string } = {};
+
     if (!formData.displayName.trim()) {
       errors.displayName = 'Display Name is required';
     }
@@ -83,25 +98,32 @@ export default function ProfileSetup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
+  
     if (!validateForm()) {
       setError('Please fill in all required fields');
       return;
     }
-
+  
     setIsSaving(true);
     setError('');
-
+  
     try {
       await createUserProfile(user, {
         displayName: formData.displayName,
         fullName: formData.fullName,
         postcode: formData.postcode,
         instruments: selectedInstruments,
-        avatar: formData.avatar
+        avatar: formData.avatar,
+        hasProfile: true, // Explicitly set hasProfile to true
       });
-
-      router.push('/home');
+  
+      // Fetch and update profile state
+      const refreshedProfile = await getUserProfile(user.uid);
+      if (refreshedProfile) {
+        setProfile(refreshedProfile); // Update global state
+      }
+  
+      router.push('/home'); // Redirect to home
     } catch (error: any) {
       setError(error.message || 'Failed to update profile');
     } finally {
@@ -124,13 +146,6 @@ export default function ProfileSetup() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white">Loading profile...</div>
-      </div>
-    );
-  }
 
   return (
     <main className="min-h-screen flex flex-col bg-gray-900 p-4">
@@ -159,8 +174,8 @@ export default function ProfileSetup() {
                 <Camera className="w-8 h-8 text-gray-400" />
               )} */}
             </div>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="text-orange-500 text-sm hover:text-orange-400 transition-colors"
             >
               Upload photo
@@ -217,7 +232,7 @@ export default function ProfileSetup() {
                   key={instrument}
                   type="button"
                   onClick={() => {
-                    setSelectedInstruments(prev => 
+                    setSelectedInstruments(prev =>
                       prev.includes(instrument)
                         ? prev.filter(i => i !== instrument)
                         : [...prev, instrument]

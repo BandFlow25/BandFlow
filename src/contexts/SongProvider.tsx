@@ -30,65 +30,83 @@ export function SongsProvider({ children }: SongsProviderProps) {
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchSongs = useCallback(() => {
-    if (!activeBand?.id) {
-      setIsLoading(false);
-      return () => {}; // Return empty cleanup function
-    }
-    
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    let unsubscribe: () => void = () => {};
+    let isMounted = true;
 
-    try {
-      // Get reference to the songs subcollection of the current band
-      const songsRef = collection(
-        db, 
-        COLLECTIONS.BANDS, 
-        activeBand.id, 
-        COLLECTIONS.BAND_SONGS
-      );
-
-      const songQuery = query(
-        songsRef,
-        orderBy('createdAt', 'desc')
-      );
-      
-      // Set up real-time listener
-      return onSnapshot(
-        songQuery, 
-        (snapshot) => {
-          const fetchedSongs = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate(),
-            updatedAt: doc.data().updatedAt?.toDate()
-          })) as BandSong[];
-          
-          setSongs(fetchedSongs);
+    const setupSongsListener = async () => {
+      if (!activeBand?.id) {
+        if (isMounted) {
           setIsLoading(false);
-        },
-        (error) => {
-          console.error('Error fetching songs:', error);
-          setError(error as Error);
-          setIsLoading(false);
+          setSongs([]);
         }
-      );
-    } catch (err) {
-      console.error('Error setting up songs listener:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch songs'));
-      setIsLoading(false);
-      return () => {}; // Return empty cleanup function in case of error
-    }
+        return;
+      }
+
+      try {
+        if (isMounted) {
+          setIsLoading(true);
+          setError(null);
+        }
+
+        const songsRef = collection(
+          db, 
+          COLLECTIONS.BANDS, 
+          activeBand.id, 
+          COLLECTIONS.BAND_SONGS
+        );
+
+        const songQuery = query(
+          songsRef,
+          orderBy('createdAt', 'desc')
+        );
+        
+        unsubscribe = onSnapshot(
+          songQuery, 
+          (snapshot) => {
+            if (!isMounted) return;
+            
+            const fetchedSongs = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate(),
+              updatedAt: doc.data().updatedAt?.toDate()
+            })) as BandSong[];
+            
+            setSongs(fetchedSongs);
+            setIsLoading(false);
+          },
+          (error) => {
+            if (!isMounted) return;
+            console.error('Error fetching songs:', error);
+            setError(error as Error);
+            setIsLoading(false);
+          }
+        );
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Error setting up songs listener:', err);
+        setError(err instanceof Error ? err : new Error('Failed to fetch songs'));
+        setIsLoading(false);
+      }
+    };
+
+    setupSongsListener();
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [activeBand?.id]);
 
-  useEffect(() => {
-    const unsubscribe = fetchSongs();
-    return () => unsubscribe();
-  }, [fetchSongs]);
-
   const refreshSongs = useCallback(async () => {
-    await fetchSongs();
-  }, [fetchSongs]);
+    // The refresh is now handled by the real-time listener
+    // This is kept for API consistency
+    setIsLoading(true);
+    setError(null);
+    // The listener will automatically update when data changes
+    setIsLoading(false);
+  }, []);
 
   // Filtered songs computation
   const filteredSongs = songs.filter(song => {

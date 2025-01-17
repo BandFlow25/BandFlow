@@ -1,26 +1,25 @@
 // components/songs/SongCard/BaseSongCard.tsx
-import { useState } from 'react';
+
+import { useState, useMemo } from 'react';
 import { Music, Play, Trash2, ThumbsDown, ListChecks, PauseCircle, XCircle, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BandSong, SongListType } from '@/lib/types/song';
 import { SongCardActions } from './SongCardActions';
-import { addVote } from '@/lib/services/firebase/songs';
+import { addVote, updateRagStatus, updateSongStatus, deleteBandSong } from '@/lib/services/firebase/songs';
 import { usePlayerContext } from "@/contexts/PlayerContext";
 import { VotingControls } from '@/components/songs/Features/VotingControls';
 import { useBand } from '@/contexts/BandProvider';
 import { useAuth } from '@/contexts/AuthProvider';
-import { updateSongStatus, updateRagStatus } from '@/lib/services/firebase/songs';
 import { MetadataDisplay } from '@/components/songs/Features/MetadataDisplay';
-import { deleteBandSong } from '@/lib/services/firebase/songs';
-import { RAGStatus } from '@/lib/types/song';
+import { RAGStatus, SongStatus } from '@/lib/types/song';
 import { RAGStatusControls } from '@/components/songs/Features/RagStatusControls';
-import { SongStatus } from '@/lib/types/song';
+import { SONG_STATUS } from '@/lib/types/song';
 
 interface BaseSongCardProps {
   song: BandSong;
   type: SongListType;
+  onSongDeleted?: (() => void) | undefined;  // Make function prop explicitly optional
   className?: string;
-  onSongDeleted: (() => void) | undefined;
 }
 
 export function BaseSongCard({
@@ -29,27 +28,77 @@ export function BaseSongCard({
   className,
   onSongDeleted
 }: BaseSongCardProps) {
-
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { setCurrentSong, setIsPlaying } = usePlayerContext();
-  const { currentBandId, memberCount, isAdmin } = useBand();
   const { user } = useAuth();
+  const { activeBand, isAdmin, memberCount } = useBand();
   const voteCount = Object.keys(song.votes || {}).length;
   const hasUserVoted = user ? !!song.votes?.[user.uid] : false;
-  //const needsVote = song.status === 'VOTING' && !hasUserVoted;
 
-  // All your existing handler functions remain the same
-  const handleStatusChange = async (newStatus: SongStatus) => {
-    if (!user) return;
+  const needsUserAction = useMemo(() => {
+    if (!user?.uid) return false;
+
+    switch (song.status) {
+      case SONG_STATUS.VOTING:
+        return !song.votes?.[user.uid];
+      case SONG_STATUS.PRACTICE:
+        return !song.ragStatus?.[user.uid];
+      case SONG_STATUS.SUGGESTED:
+        return true; // Always needs action until voted on
+      default:
+        return false;
+    }
+  }, [song.status, song.votes, song.ragStatus, user?.uid]);
+
+
+  // Update handler functions to use activeBand.id
+  const handleVote = async (score: number) => {
+    if (!user || !activeBand?.id) return;
 
     try {
-      await updateSongStatus(song.id, user.uid, newStatus);
+      await addVote(activeBand.id, song.id, user.uid, score);
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error('Error in handleVote:', error);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: SongStatus) => {
+    if (!user || !activeBand?.id) return;
+
+    try {
+      await updateSongStatus(activeBand.id, song.id, user.uid, newStatus);
       setIsMenuOpen(false);
     } catch (error) {
       console.error('Error updating song status:', error);
     }
   };
+
+  const handleRagStatusUpdate = async (status: RAGStatus) => {
+    if (!user || !activeBand?.id) return;
+
+    try {
+      await updateRagStatus(activeBand.id, song.id, user.uid, status);
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error('Error updating RAG status:', error);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || !activeBand?.id) return;
+
+    try {
+      await deleteBandSong(activeBand.id, song.id, user.uid);
+      setIsMenuOpen(false);
+      onSongDeleted?.();
+    } catch (error) {
+      console.error('Error deleting song:', error);
+    }
+  };
+
   const getStatusStyles = (status: string) => {
     switch (status) {
       case 'PARKED':
@@ -60,64 +109,36 @@ export function BaseSongCard({
         return 'bg-gray-800/40 hover:bg-gray-800/60';
     }
   };
-  const getDynamicStyles = (status: string) => {
-    if (status === 'VOTING' && !hasUserVoted) {
-      return 'border border-orange-500/50';
-    }
-    return '';
-  };
-  const handleVote = async (score: number) => {
-    if (!user) return;
 
-    try {
-      await addVote(song.id, user.uid, score);
-      setIsMenuOpen(false);
-    } catch (error) {
-      console.error('Error saving vote:', error);
-    }
-  };
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!user || !currentBandId) return;
+  // const getDynamicStyles = (status: string) => {
+  //   if (status === 'VOTING' && !hasUserVoted) {
+  //     return 'border border-orange-500/50';
+  //   }
+  //   return '';
+  // };
 
-    try {
-      await deleteBandSong(song.id, user.uid, currentBandId);
-      setIsMenuOpen(false);
-      onSongDeleted?.();
-    } catch (error) {
-      console.error('Error deleting song:', error);
-    }
-  };
-  const calculateScore = (votes: Record<string, { value: number }> | undefined, totalMembers: number) => {
-    if (!votes) return 0;
+  const calculateScore = (votes: Record<string, { value: number }> | undefined) => {
+    if (!votes || !activeBand) return 0;
     const totalVotes = Object.values(votes).reduce((sum, vote) => sum + vote.value, 0);
-    const maxPossibleScore = totalMembers * 5;
+    const maxPossibleScore = (song.votingMemberCount || memberCount) * 5;
     return Math.round((totalVotes / maxPossibleScore) * 100);
   };
+
   const getDownVoters = (votes: Record<string, { value: number }> | undefined) => {
     if (!votes) return [];
     return Object.entries(votes)
       .filter(([_, vote]) => vote.value === 0)
       .map(([userId]) => userId);
   };
-  const handleRagStatusUpdate = async (status: RAGStatus) => {
-    if (!user) return;
 
-    try {
-      await updateRagStatus(song.id, user.uid, status);
-      setIsMenuOpen(false);
-    } catch (error) {
-      console.error('Error updating RAG status:', error);
-    }
-  };
 
   return (
     <div
       className={cn(
         "group relative flex items-center gap-4 p-3 rounded-md",
+        needsUserAction ? "border border-orange-500/50" : "",
         getStatusStyles(song.status),
-        getDynamicStyles(song.status),
-        "transition-all duration-300 ease-in-out transform hover:shadow-lg", // Enhanced transition
+        "transition-all duration-300 ease-in-out transform hover:shadow-lg",
         className
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -166,7 +187,7 @@ export function BaseSongCard({
         )}
         {song.status === 'REVIEW' && (
           <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span>Score: {calculateScore(song.votes, memberCount)}%</span>
+            <span>Score: {calculateScore(song.votes)}%</span>
             {getDownVoters(song.votes).length > 0 && (
               <div className="group relative">
                 <ThumbsDown className="w-4 h-4 text-red-400 transition-colors duration-200" />
@@ -175,7 +196,7 @@ export function BaseSongCard({
                 </div>
               </div>
             )}
-            {calculateScore(song.votes, memberCount) >= 85 && (
+            {calculateScore(song.votes) >= 85 && (
               <span className="animate-bounce">🔥</span>
             )}
           </div>
@@ -221,7 +242,7 @@ export function BaseSongCard({
 
       {/* Menu Overlay */}
       {isMenuOpen && (
-        <div 
+        <div
           className={cn(
             "absolute inset-0 bg-gray-800/95 rounded-md p-4",
             "flex items-center justify-center",

@@ -1,20 +1,20 @@
-// SetlistProvider.tsx
+// contexts/SetlistProvider.tsx
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { useBand } from '@/contexts/BandProvider';
 import { getSetlist } from '@/lib/services/firebase/setlists';
 import type { Setlist } from '@/lib/types/setlist';
 
-type SetlistContextType = {
+interface SetlistContextType {
   setlist: Setlist | null;
   isLoading: boolean;
   error: string | null;
-  refreshSetlist: () => void;
-} | undefined;
+  refreshSetlist: () => Promise<void>;
+}
 
-const SetlistContext = createContext<SetlistContextType>(undefined);
+const SetlistContext = createContext<SetlistContextType | undefined>(undefined);
 
 export function useSetlist() {
   const context = useContext(SetlistContext);
@@ -32,20 +32,22 @@ export function SetlistProvider({ children }: SetlistProviderProps) {
   const { activeBand } = useBand();
   const params = useParams();
   const pathname = usePathname();
-  const bandId = params?.bandId as string;
   
-  // Extract setlistId from pathname if not in params
-  const setlistId = pathname?.split('/').pop();
+  // Extract setlistId only from params if it exists
+  const setlistId = Array.isArray(params?.setlistId) ? params.setlistId[0] : params?.setlistId;
   const [setlist, setSetlist] = useState<Setlist | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if we're on a setlist detail page
-  const isSetlistPage = pathname?.includes('/setlists/') && !pathname?.endsWith('/setlists');
-   const fetchSetlist = useCallback(async () => {
-    
-    if (!bandId || !setlistId || !isSetlistPage || setlistId === 'setlists') {
-      console.log('SetlistProvider Debug - Early return due to missing params or not on setlist page');
+  // Memoize the page check to prevent unnecessary re-renders
+  const isSetlistPage = useMemo(() => {
+    // Only true if we have a specific setlistId param
+    return Boolean(setlistId && setlistId !== 'setlists');
+  }, [setlistId]);
+
+  const fetchSetlist = useCallback(async () => {
+    if (!activeBand?.id || !setlistId || !isSetlistPage) {
+      setIsLoading(false);
       return;
     }
 
@@ -53,35 +55,45 @@ export function SetlistProvider({ children }: SetlistProviderProps) {
     setError(null);
 
     try {
-      const data = await getSetlist(bandId, setlistId);
+      const data = await getSetlist(activeBand.id, setlistId);
           
       if (!data) {
-        throw new Error('Setlist not found in SetlistProvider');
+        throw new Error('Setlist not found');
       }
       
       setSetlist(data);
-      
-    } catch (err: any) {
-      console.error('SetlistProvider Debug - Error:', err);
-      setError(err.message || 'Failed to load setlist.');
+    } catch (err) {
+      console.error('Error fetching setlist:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load setlist');
       setSetlist(null);
     } finally {
       setIsLoading(false);
     }
-  }, [bandId, setlistId, isSetlistPage]);
+  }, [activeBand?.id, setlistId, isSetlistPage]);
 
   useEffect(() => {
     if (isSetlistPage) {
       fetchSetlist();
     } else {
-      setSetlist(null);
-      setError(null);
-      setIsLoading(false);
+      // Only clear state if we were previously on a setlist page
+      if (setlist !== null) {
+        setSetlist(null);
+        setError(null);
+        setIsLoading(false);
+      }
     }
-  }, [fetchSetlist, isSetlistPage]);
+  }, [fetchSetlist, isSetlistPage, setlist]);
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    setlist,
+    isLoading,
+    error,
+    refreshSetlist: fetchSetlist
+  }), [setlist, isLoading, error, fetchSetlist]);
 
   return (
-    <SetlistContext.Provider value={{ setlist, isLoading, error, refreshSetlist: fetchSetlist }}>
+    <SetlistContext.Provider value={value}>
       {children}
     </SetlistContext.Provider>
   );

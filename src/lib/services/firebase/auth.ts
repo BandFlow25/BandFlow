@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut,
   User
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/config/firebase';
 
 export interface UserProfile {
@@ -18,29 +18,18 @@ export interface UserProfile {
   avatar?: string;
   instruments: string[];
   postcode: string;
+  hasProfile?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export const createUserProfile = async (user: User, profileData: Partial<UserProfile>) => {
   const userRef = doc(db, 'bf_users', user.uid);
-  
-  const profile: UserProfile = {
-    uid: user.uid,
-    email: user.email!,
-    displayName: profileData.displayName || `${profileData.firstName} ${profileData.lastName}`,
-    firstName: profileData.firstName || '',
-    lastName: profileData.lastName || '',
-    fullName: profileData.fullName || `${profileData.firstName} ${profileData.lastName}`,
-    instruments: profileData.instruments || [],
-    postcode: profileData.postcode || '',
-    avatar: profileData.avatar || '',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+  const updatedData = {
+    ...profileData,
+    updatedAt: Timestamp.now(),
   };
-
-  await setDoc(userRef, profile);
-  return profile;
+  await setDoc(userRef, updatedData, { merge: true }); // Merge to retain existing fields
 };
 
 export const updateUserProfile = async (uid: string, profileData: Partial<UserProfile>) => {
@@ -71,25 +60,17 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
 
 export const registerWithEmail = async (email: string, password: string) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  
-  // Create initial bf_users profile immediately after auth creation
-  const initialProfile: UserProfile = {
-    uid: userCredential.user.uid,
-    email: email,
-    displayName: '',
-    firstName: '',
-    lastName: '',
-    fullName: '',
-    instruments: [],
-    postcode: '',
-    avatar: '',
+  const user = userCredential.user;
+
+  // Initialize user profile with hasProfile: false
+  await setDoc(doc(db, "bf_users", user.uid), {
+    email: user.email,
+    hasProfile: false,
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  });
 
-  await createUserProfile(userCredential.user, initialProfile);
-  
-  return userCredential.user;
+  return user;
 };
 
 export const signInWithEmail = async (email: string, password: string) => {

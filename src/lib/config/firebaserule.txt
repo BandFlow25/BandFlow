@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is band member
+    function isBandMember(bandId) {
+      return exists(/databases/$(database)/documents/bf_bands/$(bandId)/members/$(request.auth.uid));
+    }
+    
+    // Helper function to check if user is band admin
+    function isBandAdmin(bandId) {
+      return exists(/databases/$(database)/documents/bf_bands/$(bandId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/bf_bands/$(bandId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Firestore rules for bf_bands and its subcollections
+    match /bf_bands/{bandId} {
+      // Main band document rules
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && isBandAdmin(bandId);
+
+      // Members subcollection rules
+      match /members/{memberId} {
+        allow read: if request.auth != null;
+        // Allow creation if either:
+        // 1. This is the first member (band creator) and memberId matches their auth ID
+        // 2. An existing admin is adding the member
+        allow create: if request.auth != null && (
+          // Case 1: First member (creator) - their member doc ID must match their auth ID
+          (!exists(/databases/$(database)/documents/bf_bands/$(bandId)/members/**) && 
+           memberId == request.auth.uid && 
+           request.resource.data.role == 'admin') ||
+          // Case 2: Added by existing admin
+          isBandAdmin(bandId)
+        );
+        
+        allow update: if request.auth != null && 
+          ((request.auth.uid == memberId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'instruments'])) || 
+          isBandAdmin(bandId));
+        allow delete: if request.auth != null && isBandAdmin(bandId);
+      }
+
+      // Songs subcollection rules
+      match /songs/{songId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && isBandMember(bandId);
+        allow update: if request.auth != null && isBandMember(bandId) && (
+          // Allow updates to votes and RAG status from band members
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['votes', 'ragStatus', 'updatedAt', 'status'])
+        );
+        allow delete: if request.auth != null && isBandAdmin(bandId);
+      }
+
+      // Setlists subcollection rules
+      match /setlists/{setlistId} {
+        allow read: if request.auth != null && isBandMember(bandId);
+        allow write: if request.auth != null && isBandMember(bandId);
+      }
+    }
+
+    // User profiles rules
+    match /bf_users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Base songs collection rules
+    match /bf_base_songs/{songId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
+    }
+  }
+}

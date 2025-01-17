@@ -2,11 +2,19 @@
 'use client';
 
 import { useModal } from '@/contexts/ModalProvider';
+import { useAuth } from '@/contexts/AuthProvider';
+import { useBand } from '@/contexts/BandProvider';
 import React, { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+
 import { X } from 'react-feather';
+import { Sparkles } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import { searchSpotifyTracks, type SpotifyTrack } from '@/lib/services/spotify';
 import {
   addBaseSong,
@@ -15,8 +23,7 @@ import {
   findBaseSongByTitleAndArtist,
   findBandSongByBaseSongId
 } from '@/lib/services/firebase/songs';
-import { useBand } from '@/contexts/BandProvider';
-import { Sparkles } from 'lucide-react';
+
 import type { BaseSong, SongStatus } from '@/lib/types/song';
 
 interface ExtendedSpotifyTrack extends SpotifyTrack {
@@ -75,16 +82,25 @@ function baseToSpotifyTrack(song: BaseSong): ExtendedSpotifyTrack {
 
 export default function AddSongModal() {
   const { isAddSongOpen, closeAddSong } = useModal();
-  const { currentBandId } = useBand();
+  const { activeBand } = useBand();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<ExtendedSpotifyTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<ExtendedSpotifyTrack | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingState, setLoadingState] = useState<'idle' | 'searching' | 'processing'>('idle');
+  const [processingText, setProcessingText] = useState('');
   const debouncedQuery = useDebounce(query, 300);
 
   useEffect(() => {
+    console.log('AddSongModal: Modal state changed', {
+      isOpen: isAddSongOpen,
+      activeBand: activeBand?.id,
+      user: user?.uid
+    });
+
     if (isAddSongOpen) {
       setQuery("");
       setSuggestions([]);
@@ -100,21 +116,27 @@ export default function AddSongModal() {
         setSuggestions([]);
         return;
       }
+
+      console.log('AddSongModal: Starting track search for:', debouncedQuery);
       setIsLoading(true);
       setError(null);
 
       try {
         const baseSongs = await searchBaseSongs(debouncedQuery);
+        console.log('AddSongModal: Base songs search results:', baseSongs.length);
+
         if (baseSongs.length > 0) {
+          console.log('AddSongModal: Found existing BF songs');
           const suggestions = baseSongs.map(baseToSpotifyTrack);
           setSuggestions(suggestions);
         } else {
+          console.log('AddSongModal: No BF songs found, searching Spotify');
           const results = await searchSpotifyTracks(debouncedQuery);
-
-             setSuggestions(results);
+          console.log('AddSongModal: Spotify results:', results.length);
+          setSuggestions(results);
         }
       } catch (err) {
-        console.error(err);
+        console.error('AddSongModal: Search error:', err);
         setError("Failed to search songs");
       } finally {
         setIsLoading(false);
@@ -124,79 +146,124 @@ export default function AddSongModal() {
   }, [debouncedQuery]);
 
   const handleTrackSelect = async (track: ExtendedSpotifyTrack) => {
-    if (!currentBandId) {
+    console.log('AddSongModal: Track selected:', {
+      name: track.name,
+      artists: track.artists.map(a => a.name),
+      baseSongId: track.baseSongId
+    });
+
+    if (!activeBand?.id) {
+      console.error('AddSongModal: No active band:', { activeBand });
       setError("No active band selected");
       return;
     }
 
-    const existingBandSong = track.baseSongId ?
-      await findBandSongByBaseSongId(currentBandId, track.baseSongId) :
-      null;
-
-    if (existingBandSong) {
-      setError("This song is already in your band's songs");
-      return;
-    }
-
-    if (!track.baseSongId) {
-      const existingBaseSong = await findBaseSongByTitleAndArtist(
-        track.name,
-        track.artists.map(a => a.name).join(", ")
-      );
-      if (existingBaseSong) {
-        track = baseToSpotifyTrack(existingBaseSong);
-      }
-    }
-
-    setSelectedTrack(track);
-    setShowSuggestions(false);
-    setQuery(track.name);
-  };
-
-  const handleAddSong = async (status: SongStatus) => {
-    if (!selectedTrack || !currentBandId) {
-      setError(selectedTrack ? "No active band selected" : "No track selected");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
     try {
-      let baseSongId = selectedTrack.baseSongId;
+      if (track.baseSongId) {
+        console.log('AddSongModal: Checking for existing band song');
+        const existingBandSong = await findBandSongByBaseSongId(activeBand.id, track.baseSongId);
 
-      if (!baseSongId) {
+        console.log('AddSongModal: Existing band song check:', {
+          exists: !!existingBandSong,
+          songId: existingBandSong?.id
+        });
+
+        if (existingBandSong) {
+          setError(`This song already exists in your ${existingBandSong.status.toLowerCase()} list`);
+          return;
+        }
+      } else {
+        console.log('AddSongModal: Checking for existing base song');
         const existingBaseSong = await findBaseSongByTitleAndArtist(
-          selectedTrack.name,
-          selectedTrack.artists.map((a) => a.name).join(", ")
+          track.name,
+          track.artists.map(a => a.name).join(", ")
         );
 
         if (existingBaseSong) {
-          baseSongId = existingBaseSong.id;
-        } else {
-          
-          baseSongId = await addBaseSong({
-            title: selectedTrack.name,
-            artist: selectedTrack.artists.map((a) => a.name).join(", "),
-            previewUrl: selectedTrack.preview_url || selectedTrack.external_urls?.spotify || "",
-            thumbnail: selectedTrack.album?.images[0]?.url || "",
-            spotifyUid: `spotify:track:${selectedTrack.id}`,
-            metadata: {
-              duration: String(Math.floor(selectedTrack.duration_ms / 1000))
-            }
-          });
+          console.log('AddSongModal: Found existing base song:', existingBaseSong.id);
+          track = baseToSpotifyTrack(existingBaseSong);
         }
       }
 
-      await addBandSong(baseSongId, currentBandId, status);
-      closeAddSong();
+      setSelectedTrack(track);
+      setShowSuggestions(false);
+      setQuery(track.name);
     } catch (err) {
-      console.error(err);
-      setError("Failed to add song");
-    } finally {
-      setIsLoading(false);
+      console.error('AddSongModal: Error selecting track:', err);
+      setError("Failed to process track selection");
     }
   };
+
+  const handleAddSong = async (status: SongStatus) => {
+    if (!selectedTrack || !activeBand?.id) {
+      setError(selectedTrack ? "No active band selected" : "No track selected");
+      return;
+    }
+  
+    // Close modal immediately
+    closeAddSong();
+  
+    try {
+      let baseSongId = selectedTrack.baseSongId;
+      
+      if (!baseSongId) {
+        // Show AI processing toast - with forced minimum duration
+        toast.loading("🤖 BandFlow AI Helper is analyzing your song...", {
+          id: "ai-helper",
+          duration: 3000 // Minimum display time
+        });
+  
+        const baseData = {
+          title: selectedTrack.name,
+          artist: selectedTrack.artists.map((a) => a.name).join(", "),
+          previewUrl: selectedTrack.preview_url || selectedTrack.external_urls?.spotify || "",
+          thumbnail: selectedTrack.album?.images[0]?.url || "",
+          spotifyUid: `spotify:track:${selectedTrack.id}`,
+          metadata: {
+            duration: String(Math.floor(selectedTrack.duration_ms / 1000))
+          }
+        };
+  
+        // Add artificial delay if AI is too fast
+        const aiProcessingStart = Date.now();
+        baseSongId = await addBaseSong(baseData);
+        const processingTime = Date.now() - aiProcessingStart;
+        
+        // Ensure minimum display time for AI message
+        if (processingTime < 3000) {
+          await new Promise(resolve => setTimeout(resolve, 3000 - processingTime));
+        }
+  
+        // Update toast to show completion
+        toast.success("✨ BandFlow AI has enhanced your song with key and tempo information!", {
+          id: "ai-helper",
+          duration: 4000
+        });
+      }
+  
+      // Show adding to collection toast
+      toast.loading("Adding to your collection...", {
+        id: "add-song"
+      });
+  
+      await addBandSong(baseSongId, activeBand.id, status);
+  
+      // Success toast
+      toast.success(`Song added to your ${status.toLowerCase()} list!`, {
+        id: "add-song"
+      });
+  
+    } catch (err) {
+      console.error('AddSongModal: Error adding song:', err);
+      toast.error("Failed to add song", {
+        id: "add-song"
+      });
+    }
+  };
+
+
+
+
 
   return (
     <Dialog open={isAddSongOpen} onOpenChange={closeAddSong}>
@@ -264,17 +331,18 @@ export default function AddSongModal() {
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 <Button
                   onClick={() => handleAddSong("SUGGESTED")}
-                  disabled={isLoading}
-                  className={
-                    isLoading
-                      ? "bg-orange-500 text-white animate-pulse w-full sm:w-auto"
-                      : "bg-blue-500 hover:bg-blue-600 text-white w-full sm:w-auto"
-                  }
+                  disabled={loadingState === 'processing'}
+                  className={cn(
+                    "w-full sm:w-[200px] h-[48px]", // Fixed height prevents jumping
+                    loadingState === 'processing'
+                      ? "bg-orange-500 text-white"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                  )}
                 >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5" />
-                      BandFlow AI Helper gathering info...
+                  {loadingState === 'processing' ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Sparkles className="w-5 h-5 animate-pulse" />
+                      <span className="text-sm">{processingText}</span>
                     </div>
                   ) : (
                     "Add to Suggestions"
@@ -283,17 +351,18 @@ export default function AddSongModal() {
 
                 <Button
                   onClick={() => handleAddSong("PLAYBOOK")}
-                  disabled={isLoading}
-                  className={
-                    isLoading
-                      ? "bg-orange-500 text-white animate-pulse w-full sm:w-auto"
-                      : "bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto"
-                  }
+                  disabled={loadingState === 'processing'}
+                  className={cn(
+                    "w-full sm:w-[200px] h-[48px]", // Fixed height prevents jumping
+                    loadingState === 'processing'
+                      ? "bg-orange-500 text-white"
+                      : "bg-orange-500 hover:bg-orange-600 text-white"
+                  )}
                 >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5" />
-                      BandFlow AI Helper gathering info...
+                  {loadingState === 'processing' ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Sparkles className="w-5 h-5 animate-pulse" />
+                      <span className="text-sm">{processingText}</span>
                     </div>
                   ) : (
                     "Add to Play Book"

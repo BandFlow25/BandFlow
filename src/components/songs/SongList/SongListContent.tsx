@@ -37,21 +37,44 @@ export function SongListContent({
   if (songs.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <span className="text-gray-400">No songs found</span>
+        <span className="text-gray-400">
+          {getEmptyMessage(listType)}
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 px-4">
       {songs.map((song) => (
         <BaseSongCard
           key={song.id}
           song={song}
           type={listType}
-          onSongDeleted={onSongDeleted}
+          {...(onSongDeleted ? { onSongDeleted } : {})}  // Only pass if defined
         />
       ))}
     </div>
   );
+}
+
+function getEmptyMessage(type: SongListType): string {
+  switch (type) {
+    case 'suggestions':
+      return 'No song suggestions yet';
+    case 'voting':
+      return 'No songs currently in voting';
+    case 'review':
+      return 'No songs to review';
+    case 'practice':
+      return 'No songs in practice';
+    case 'playbook':
+      return 'No songs in the Play Book';
+    case 'parked':
+      return 'No parked songs';
+    case 'discarded':
+      return 'No discarded songs';
+    default:
+      return 'No songs found';
+  }
 }

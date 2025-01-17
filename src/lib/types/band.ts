@@ -5,35 +5,28 @@ import { Timestamp } from 'firebase/firestore';
 export interface Band {
   id: string;
   name: string;
-  description: string;
-  imageUrl: string;
-  socialLinks: {
-    facebook?: string;
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
+  imageUrl?: string;
+  description?: string;
+  socialLinks?: {
+    [key: string]: string;
   };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
-export interface CreateBandData {
-  name: string;
-  description?: string;
-  imageUrl?: string;
-  socialLinks?: {
-    facebook?: string;
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
-  };
-}
-
 export interface BandMember {
   userId: string;
-  bandId: string;
   role: 'admin' | 'member';
   displayName: string;
   instruments: string[];
   joinedAt: Timestamp;
+}
+
+export interface CreateBandData {
+  name: string;
+  imageUrl?: string;
+  description?: string;
+  socialLinks?: {
+    [key: string]: string;
+  };
 }

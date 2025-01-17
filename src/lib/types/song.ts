@@ -41,7 +41,7 @@ export const STATUS_TO_LIST_TYPE: Record<SongStatus, Exclude<SongListType, 'all'
 
 // UI display labels - used for rendering status in the interface
 export const SONG_LIST_LABELS: Record<SongListType, string> = {
-  [SONG_LIST_TYPES.ALL]: 'All Songs',
+  [SONG_LIST_TYPES.ALL]: 'New Songs',
   [SONG_LIST_TYPES.SUGGESTIONS]: 'Suggestions',
   [SONG_LIST_TYPES.VOTING]: 'In Voting',
   [SONG_LIST_TYPES.REVIEW]: 'In Review',

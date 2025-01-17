@@ -1,26 +1,18 @@
 //src\app\bands\[bandId]\media\page.tsx
 'use client';
 
-import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthProvider';
 import { useBand } from '@/contexts/BandProvider';
-import PageLayout from '@/components/layout/PageLayout';
-import { useParams } from 'next/navigation';
+import {PageLayout} from '@/components/layout/PageLayout';
 import MediaGallery from '@/components/media/MediaGallery';
 
+
+/** HIGHLIGHT: Removed setActiveBandId, params, and useEffect */
 export default function MediaPage() {
   const { user } = useAuth();
-  const { setActiveBandId, activeBand, isLoading, error } = useBand();
-  const params = useParams();
-  const bandId = params?.bandId as string;
+  const { activeBand, isLoadingBands, error } = useBand();
 
-  useEffect(() => {
-    if (user && bandId) {
-      setActiveBandId(bandId);
-    }
-  }, [bandId, user, setActiveBandId]);
-
-  if (isLoading || !activeBand) {
+  if (isLoadingBands || !activeBand) {
     return <div className="min-h-screen bg-gray-900" />;
   }
 

@@ -1,5 +1,3 @@
-//src/app/(auth)/login/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +8,7 @@ import { useAuth } from '@/contexts/AuthProvider';
 
 export default function Login() {
   const router = useRouter();
-  const { user, login } = useAuth();
+  const { user, login, validateProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
@@ -21,14 +19,14 @@ export default function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
+      if (!validateProfile()) return;
       router.push('/home');
     }
-  }, [user, router]);
+  }, [user, router, validateProfile]);
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
   };
-
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -39,9 +37,9 @@ export default function Login() {
       router.push('/home');
     } catch (error) {
       if (error instanceof Error) {
-      setError(error.message || 'An error occurred during login.');
+        setError(error.message || 'An error occurred during login.');
       } else {
-      setError('An unknown error occurred during login.');
+        setError('An unknown error occurred during login.');
       }
     } finally {
       setIsLoading(false);
@@ -51,7 +49,7 @@ export default function Login() {
   return (
     <main className="min-h-screen flex flex-col bg-gray-900 p-4">
       <div className="mb-8">
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center text-gray-400 hover:text-white"
         >
@@ -100,14 +98,14 @@ export default function Login() {
               placeholder="••••••••"
               required
             />
-<button
-  type="button"
-  onClick={togglePasswordVisibility}
-  tabIndex={-1}
-  className="absolute right-3 top-10 transform -translate-y-1/2 text-gray-400 hover:text-white"
->
-  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-</button>
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              tabIndex={-1}
+              className="absolute right-3 top-10 transform -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
 
           <div className="flex items-center">
@@ -132,12 +130,12 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-400">
+        {/* <p className="mt-4 text-center text-sm text-gray-400">
           Don't have an account?{' '}
           <Link href="/register" className="text-orange-500 hover:text-orange-400">
             Create account
           </Link>
-        </p>
+        </p> */}
       </div>
     </main>
   );
