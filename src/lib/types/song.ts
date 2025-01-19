@@ -2,10 +2,10 @@
 import { Timestamp } from 'firebase/firestore';
 
 // Database-level status values - used when storing/updating song status
+// lib/types/song.ts
 export const SONG_STATUS = {
   SUGGESTED: 'SUGGESTED',  // New song suggested to the band
-  VOTING: 'VOTING',       // Band members are voting on the song
-  REVIEW: 'REVIEW',       // Voting complete, ready for review
+  REVIEW: 'REVIEW',       // All votes received, ready for review
   PRACTICE: 'PRACTICE',   // Song approved for practice
   PLAYBOOK: 'PLAYBOOK',   // Song mastered and ready for performance
   DISCARDED: 'DISCARDED', // Song rejected by the band
@@ -18,7 +18,6 @@ export type SongStatus = typeof SONG_STATUS[keyof typeof SONG_STATUS];
 export const SONG_LIST_TYPES = {
   ALL: 'all',               // Show all songs regardless of status
   SUGGESTIONS: 'suggestions', // Maps to SUGGESTED status
-  VOTING: 'voting',         // Maps to VOTING status
   REVIEW: 'review',         // Maps to REVIEW status
   PRACTICE: 'practice',     // Maps to PRACTICE status
   PLAYBOOK: 'playbook',     // Maps to PLAYBOOK status
@@ -31,7 +30,6 @@ export type SongListType = typeof SONG_LIST_TYPES[keyof typeof SONG_LIST_TYPES];
 // Bidirectional mapping between URL types and database status
 export const STATUS_TO_LIST_TYPE: Record<SongStatus, Exclude<SongListType, 'all'>> = {
   [SONG_STATUS.SUGGESTED]: SONG_LIST_TYPES.SUGGESTIONS,
-  [SONG_STATUS.VOTING]: SONG_LIST_TYPES.VOTING,
   [SONG_STATUS.REVIEW]: SONG_LIST_TYPES.REVIEW,
   [SONG_STATUS.PRACTICE]: SONG_LIST_TYPES.PRACTICE,
   [SONG_STATUS.PLAYBOOK]: SONG_LIST_TYPES.PLAYBOOK,
@@ -43,7 +41,6 @@ export const STATUS_TO_LIST_TYPE: Record<SongStatus, Exclude<SongListType, 'all'
 export const SONG_LIST_LABELS: Record<SongListType, string> = {
   [SONG_LIST_TYPES.ALL]: 'New Songs',
   [SONG_LIST_TYPES.SUGGESTIONS]: 'Suggestions',
-  [SONG_LIST_TYPES.VOTING]: 'In Voting',
   [SONG_LIST_TYPES.REVIEW]: 'In Review',
   [SONG_LIST_TYPES.PRACTICE]: 'Practice List',
   [SONG_LIST_TYPES.PLAYBOOK]: 'Play Book',

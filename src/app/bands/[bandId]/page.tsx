@@ -1,4 +1,4 @@
-// src/app/bands/[bandId]/page.tsx
+// src/app/bands/[bandId]/page.tsx 
 'use client';
  
 import { useEffect, useState } from 'react';
@@ -9,8 +9,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   BookOpen, ListMusic, Music, 
-  ThumbsUp, GitBranch, Calendar,
-  GraduationCap, ImageIcon
+  ThumbsUp, Activity,PlayCircle , GitBranch, Calendar,
+  GraduationCap,Wrench ,Loader , ImageIcon
 } from 'lucide-react';
 
 export default function BandPage() {
@@ -20,7 +20,6 @@ export default function BandPage() {
     total: 0,
     active: 0,
     suggested: 0,
-    voting: 0,
     review: 0,
     practice: 0,
     playbook: 0,
@@ -80,38 +79,53 @@ export default function BandPage() {
   const sections = [
     {
       title: `Play Book & Setlists`,
-      description: "Create and manage setlists from your mastered songs",
+      description: "Create and manage setlists from your performance-ready songs",
       icon: <BookOpen className="w-6 h-6" />,
       href: `/bands/${activeBand.id}/playbook`,
       count: songCounts.playbook > 0 ? `${songCounts.playbook} songs` : null,
       color: "bg-green-500",
       primary: true
     },
+
+    
     {
       title: "Song Pipeline",
-      description: "Songs being evaluated and practiced by the band",
+      description: "Songs being worked on by the band",
       icon: <GitBranch className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/songs`,
-      count: songCounts.practice + songCounts.voting + songCounts.suggested + songCounts.review > 0 ? 
-        `${songCounts.practice + songCounts.voting + songCounts.suggested + songCounts.review} in progress` : null,
-      color: "bg-orange-500"
+      href: `/bands/${activeBand.id}/songs?view=suggestions`,
+      color: "bg-orange-500",
+      content: (
+        <div className="flex flex-col gap-2 mt-3">
+          <Link 
+            href={`/bands/${activeBand.id}/songs?view=suggestions`}
+            className="text-sm text-orange-400 hover:text-orange-300"
+          >
+            {songCounts.suggested > 0 
+              ? `${songCounts.suggested} songs need votes`
+              : songCounts.review > 0 
+                ? `${songCounts.review} songs in review`
+                : `${songCounts.suggested + songCounts.review} songs in pipeline`}
+          </Link>
+          <Link 
+            href={`/bands/${activeBand.id}/songs?view=practice`}
+            className="text-sm text-gray-400 hover:text-gray-300"
+          >
+            {songCounts.practice} songs in practice
+          </Link>
+        </div>
+      )
     },
+
     {
-      title: "Active Practice",
-      description: "Songs currently being worked on by the band",
-      icon: <GraduationCap className="w-6 h-6" />,
+      title: `Practice List`,
+      description: "Manage songs that you are practicing & getting gig ready",
+      icon: <Wrench    className="w-6 h-6" />,
       href: `/bands/${activeBand.id}/songs?view=practice`,
-      count: songCounts.practice > 0 ? `${songCounts.practice} practicing` : null,
-      color: "bg-yellow-500"
+      count: songCounts.practice > 0 ? `${songCounts.practice} songs` : null,
+      color: "bg-yellow-400",
+      primary: true
     },
-    {
-      title: "Suggestions",
-      description: "Vote and review potential new songs for the band",
-      icon: <ThumbsUp className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/songs?view=voting`,
-      count: songCounts.voting + songCounts.suggested > 0 ? `${songCounts.voting + songCounts.suggested} to review` : null,
-      color: "bg-blue-500"
-    },
+    
     {
       title: "Events",
       description: "Manage gigs, rehearsals and setlist planning",
@@ -128,6 +142,9 @@ export default function BandPage() {
     }
   ];
 
+
+
+  
   return (
     <PageLayout title={`Welcome to ${activeBand.name}`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

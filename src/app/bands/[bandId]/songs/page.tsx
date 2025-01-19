@@ -17,7 +17,6 @@ function SongsContent() {
     total: 0,
     active: 0,
     suggested: 0,
-    voting: 0,
     review: 0,
     practice: 0,
     playbook: 0,
@@ -51,8 +50,6 @@ function SongsContent() {
     switch (view) {
       case SONG_LIST_TYPES.SUGGESTIONS:
         return songCounts.suggested;
-      case SONG_LIST_TYPES.VOTING:
-        return songCounts.voting;
       case SONG_LIST_TYPES.REVIEW:
         return songCounts.review;
       case SONG_LIST_TYPES.PRACTICE:
@@ -69,8 +66,6 @@ function SongsContent() {
     switch (view) {
       case SONG_LIST_TYPES.SUGGESTIONS:
         return 'Suggestions';
-      case SONG_LIST_TYPES.VOTING:
-        return 'In Voting';
       case SONG_LIST_TYPES.REVIEW:
         return 'In Review';
       case SONG_LIST_TYPES.PRACTICE:

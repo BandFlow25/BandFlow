@@ -7,7 +7,7 @@ import { BandProvider } from '@/contexts/BandProvider';
 import { PlayerContextProvider } from '@/contexts/PlayerContext';
 import { ModalProvider } from '@/contexts/ModalProvider';
 import Player from '@/components/ui/Player';
-import AddSongModal from '@/components/songs/AddSongModal';
+import AddSongModal from '@/components/songs/Modals/AddSongModal';
 
 const inter = Inter({ subsets: ['latin'] });
 

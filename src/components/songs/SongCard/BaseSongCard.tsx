@@ -1,35 +1,51 @@
-// components/songs/SongCard/BaseSongCard.tsx
+// components/songs/SongCard/BaseSongCardV2.tsx
 
 import { useState, useMemo } from 'react';
-import { Music, Play, Trash2, ThumbsDown, ListChecks, PauseCircle, XCircle, BookOpen } from 'lucide-react';
+import {
+  Music,
+  Play,
+  Trash2,
+  ThumbsDown,
+  ListChecks,
+  PauseCircle,
+  XCircle,
+  BookOpen,
+  Clock,
+  ListMusic,
+  Flame,
+  MoreVertical,
+  AlertCircle,
+  CheckCircle2
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { BandSong, SongListType } from '@/lib/types/song';
-import { SongCardActions } from './SongCardActions';
+import { STATUS_COLORS } from '@/lib/constants/colours';
+import type { BandSong, SongListType, RAGStatus, SongStatus } from '@/lib/types/song';
 import { addVote, updateRagStatus, updateSongStatus, deleteBandSong } from '@/lib/services/firebase/songs';
 import { usePlayerContext } from "@/contexts/PlayerContext";
-import { VotingControls } from '@/components/songs/Features/VotingControls';
+
 import { useBand } from '@/contexts/BandProvider';
 import { useAuth } from '@/contexts/AuthProvider';
-import { MetadataDisplay } from '@/components/songs/Features/MetadataDisplay';
-import { RAGStatus, SongStatus } from '@/lib/types/song';
-import { RAGStatusControls } from '@/components/songs/Features/RagStatusControls';
+import { SongMetadataModal } from '@/components/songs/Modals/SongMetadataModal';
+import { SongActionsModal } from '@/components/songs/Modals/SongActionsModal';
 import { SONG_STATUS } from '@/lib/types/song';
 
 interface BaseSongCardProps {
   song: BandSong;
   type: SongListType;
-  onSongDeleted?: (() => void) | undefined;  // Make function prop explicitly optional
+  onSongDeleted?: (() => void) | undefined;
   className?: string;
+  deleteMode?: boolean;
 }
 
 export function BaseSongCard({
   song,
   type,
   className,
-  onSongDeleted
+  onSongDeleted,
+  deleteMode
 }: BaseSongCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMetadataOpen, setIsMetadataOpen] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
   const { setCurrentSong, setIsPlaying } = usePlayerContext();
   const { user } = useAuth();
   const { activeBand, isAdmin, memberCount } = useBand();
@@ -40,25 +56,20 @@ export function BaseSongCard({
     if (!user?.uid) return false;
 
     switch (song.status) {
-      case SONG_STATUS.VOTING:
-        return !song.votes?.[user.uid];
       case SONG_STATUS.PRACTICE:
         return !song.ragStatus?.[user.uid];
       case SONG_STATUS.SUGGESTED:
-        return true; // Always needs action until voted on
+        return !hasUserVoted;
       default:
         return false;
     }
-  }, [song.status, song.votes, song.ragStatus, user?.uid]);
+  }, [song.status, song.votes, song.ragStatus, user?.uid, hasUserVoted]);
 
-
-  // Update handler functions to use activeBand.id
   const handleVote = async (score: number) => {
     if (!user || !activeBand?.id) return;
-
     try {
       await addVote(activeBand.id, song.id, user.uid, score);
-      setIsMenuOpen(false);
+      setIsActionsOpen(false);
     } catch (error) {
       console.error('Error in handleVote:', error);
     }
@@ -66,10 +77,9 @@ export function BaseSongCard({
 
   const handleStatusChange = async (newStatus: SongStatus) => {
     if (!user || !activeBand?.id) return;
-
     try {
       await updateSongStatus(activeBand.id, song.id, user.uid, newStatus);
-      setIsMenuOpen(false);
+      setIsActionsOpen(false);
     } catch (error) {
       console.error('Error updating song status:', error);
     }
@@ -77,10 +87,9 @@ export function BaseSongCard({
 
   const handleRagStatusUpdate = async (status: RAGStatus) => {
     if (!user || !activeBand?.id) return;
-
     try {
       await updateRagStatus(activeBand.id, song.id, user.uid, status);
-      setIsMenuOpen(false);
+      setIsActionsOpen(false);
     } catch (error) {
       console.error('Error updating RAG status:', error);
     }
@@ -89,33 +98,33 @@ export function BaseSongCard({
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user || !activeBand?.id) return;
-
     try {
       await deleteBandSong(activeBand.id, song.id, user.uid);
-      setIsMenuOpen(false);
       onSongDeleted?.();
     } catch (error) {
       console.error('Error deleting song:', error);
     }
   };
 
-  const getStatusStyles = (status: string) => {
-    switch (status) {
-      case 'PARKED':
-        return 'bg-blue-900/20 hover:bg-blue-900/30';
-      case 'DISCARDED':
-        return 'bg-red-900/20 hover:bg-red-900/30';
+  const getCardStyle = () => {
+    if (needsUserAction && song.status === SONG_STATUS.SUGGESTED) {
+      return `border-t-2 ${STATUS_COLORS.SUGGESTED.border} ${STATUS_COLORS.SUGGESTED.bgFaded}`;
+    }
+    switch (song.status) {
+      case SONG_STATUS.SUGGESTED:
+        return `border-t-2 ${STATUS_COLORS.SUGGESTED.border} ${STATUS_COLORS.SUGGESTED.bgFaded}`;
+      case SONG_STATUS.REVIEW:
+        return `border-t-2 ${STATUS_COLORS.REVIEW.border} ${STATUS_COLORS.REVIEW.bgFaded}`;
+      case SONG_STATUS.PRACTICE:
+        return `border-t-2 ${STATUS_COLORS.PRACTICE.border} ${STATUS_COLORS.PRACTICE.bgFaded}`;
+      case SONG_STATUS.PARKED:
+        return `border-t-2 ${STATUS_COLORS.PARKED.border} ${STATUS_COLORS.PARKED.bgFaded} opacity-75`;
+      case SONG_STATUS.DISCARDED:
+        return `border-t-2 ${STATUS_COLORS.DISCARDED.border} ${STATUS_COLORS.DISCARDED.bgFaded} opacity-75`;
       default:
-        return 'bg-gray-800/40 hover:bg-gray-800/60';
+        return 'bg-gray-800/40';
     }
   };
-
-  // const getDynamicStyles = (status: string) => {
-  //   if (status === 'VOTING' && !hasUserVoted) {
-  //     return 'border border-orange-500/50';
-  //   }
-  //   return '';
-  // };
 
   const calculateScore = (votes: Record<string, { value: number }> | undefined) => {
     if (!votes || !activeBand) return 0;
@@ -124,207 +133,213 @@ export function BaseSongCard({
     return Math.round((totalVotes / maxPossibleScore) * 100);
   };
 
-  const getDownVoters = (votes: Record<string, { value: number }> | undefined) => {
-    if (!votes) return [];
-    return Object.entries(votes)
-      .filter(([_, vote]) => vote.value === 0)
-      .map(([userId]) => userId);
-  };
+  const score = calculateScore(song.votes);
+  const isHighScore = score >= 85;
+  const hasZeroVote = Object.values(song.votes || {}).some(vote => vote.value === 0);
 
-
-  return (
-    <div
-      className={cn(
-        "group relative flex items-center gap-4 p-3 rounded-md",
-        needsUserAction ? "border border-orange-500/50" : "",
-        getStatusStyles(song.status),
-        "transition-all duration-300 ease-in-out transform hover:shadow-lg",
-        className
-      )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsMenuOpen(false);
-      }}
-    >
-      {/* Thumbnail with Play Overlay */}
-      <div className="relative min-w-[48px] h-[48px] transition-transform duration-200 ease-in-out group-hover:scale-105">
-        {song.thumbnail ? (
-          <img
-            src={song.thumbnail}
-            alt={song.title}
-            className="w-12 h-12 rounded-md object-cover transition-opacity duration-200"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-md bg-gray-700/50 flex items-center justify-center transition-colors duration-200">
-            <Music className="w-6 h-6 text-gray-400" />
-          </div>
-        )}
-
+  const renderActionButton = () => {
+    if (needsUserAction && song.status === SONG_STATUS.SUGGESTED) {
+      return (
         <button
-          className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out transform hover:scale-110"
           onClick={(e) => {
             e.stopPropagation();
-            setCurrentSong(song);
-            setIsPlaying(true);
+            setIsActionsOpen(true);
           }}
+          className="p-1.5 hover:bg-gray-700 rounded-full bg-orange-500/20"
         >
-          <Play className="w-6 h-6 text-white" />
+          <AlertCircle className="w-4 h-4 text-orange-400" />
         </button>
-      </div>
+      );
+    }
 
-      {/* Title and Artist Info */}
-      <div className="flex-1 min-w-0 transition-all duration-200">
-        <h3 className="font-medium text-white truncate">{song.title}</h3>
-        <p className="text-sm text-gray-400 truncate">{song.artist}</p>
-        {song.status === 'VOTING' && (
-          <p className="text-xs text-gray-400 transition-all duration-200">
-            Votes: {voteCount}/{memberCount}
-            {hasUserVoted && (
-              <span className="ml-2 text-green-400 transition-colors duration-200">(Voted)</span>
-            )}
-          </p>
-        )}
-        {song.status === 'REVIEW' && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span>Score: {calculateScore(song.votes)}%</span>
-            {getDownVoters(song.votes).length > 0 && (
-              <div className="group relative">
-                <ThumbsDown className="w-4 h-4 text-red-400 transition-colors duration-200" />
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  {getDownVoters(song.votes).join(', ')}
-                </div>
-              </div>
-            )}
-            {calculateScore(song.votes) >= 85 && (
-              <span className="animate-bounce">🔥</span>
-            )}
-          </div>
-        )}
-        {song.status === 'PRACTICE' && (
-          <div className="flex items-center gap-1">
-            {Array.from({ length: memberCount }).map((_, index) => {
-              const userIds = Object.keys(song.ragStatus || {});
-              const userId = userIds[index];
-              const vote = userId ? song.ragStatus?.[userId] : null;
-              const isCurrentUser = userId === user?.uid;
-
-              return (
-                <div
-                  key={userId || `empty-${index}`}
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    "transform transition-all duration-300 ease-in-out",
-                    "hover:scale-125",
-                    {
-                      'bg-red-500': vote?.status === 'RED',
-                      'bg-yellow-500': vote?.status === 'AMBER',
-                      'bg-green-500': vote?.status === 'GREEN',
-                      'bg-gray-500': !vote,
-                      'ring-2 ring-white/50 ring-offset-1 ring-offset-gray-800': isCurrentUser
-                    }
-                  )}
-                  title={userId ? `${userId}: ${vote?.status.toLowerCase() || 'not set'}` : 'Member not voted'}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Right Side Content */}
-      <div className="flex items-center gap-4 transition-opacity duration-200">
-        <MetadataDisplay song={song} />
-        <SongCardActions
-          onOpenMenu={() => setIsMenuOpen(!isMenuOpen)}
-        />
-      </div>
-
-      {/* Menu Overlay */}
-      {isMenuOpen && (
-        <div
-          className={cn(
-            "absolute inset-0 bg-gray-800/95 rounded-md p-4",
-            "flex items-center justify-center",
-            "transform transition-all duration-200 ease-in-out",
-            "animate-in fade-in zoom-in-95 duration-200"
-          )}
+    if (song.status === SONG_STATUS.REVIEW) {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsActionsOpen(true);
+          }}
+          className="p-1.5 hover:bg-gray-700 rounded-full bg-green-500/20"
         >
-          {type === 'all' && isAdmin ? (
-            <div className="flex flex-col items-center gap-4">
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <Trash2 className="w-5 h-5" />
-                Delete Song
-              </button>
-            </div>
-          ) : type === 'review' ? (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => handleStatusChange('PRACTICE')}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                title="Move to Practice List"
-              >
-                <ListChecks className="w-5 h-5" />
-                Practice
-              </button>
-              <button
-                onClick={() => handleStatusChange('PARKED')}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                title="Park this song for later"
-              >
-                <PauseCircle className="w-5 h-5" />
-                Park
-              </button>
-              <button
-                onClick={() => handleStatusChange('DISCARDED')}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                title="Discard this song"
-              >
-                <XCircle className="w-5 h-5" />
-                Discard
-              </button>
-            </div>
-          ) : type === 'practice' ? (
-            <div className="flex flex-col items-center gap-3">
-              <RAGStatusControls
-                currentStatus={song.ragStatus?.[user?.uid ?? '']?.status || 'GREY'}
-                onChange={handleRagStatusUpdate}
+          <CheckCircle2 className="w-4 h-4 text-green-400" />
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsActionsOpen(true);
+        }}
+        className="p-1.5 hover:bg-gray-700 rounded-full"
+      >
+        <MoreVertical className="w-4 h-4 text-gray-400" />
+      </button>
+    );
+  };
+
+  return (
+    <div className="relative">
+      <div
+        className={cn(
+          "relative p-2 rounded-lg",
+          getCardStyle(),
+          "transition-all duration-200 ease-in-out hover:shadow-lg cursor-pointer",
+          className
+        )}
+        onClick={(e) => {
+          // Ignore clicks on the thumbnail area
+          if (!(e.target as HTMLElement).closest('.thumbnail-area')) {
+            setIsActionsOpen(true);
+          }
+        }}
+      >
+        <div className="flex items-center flex-1 h-10">
+          {/* Thumbnail */}
+          <div className="relative w-10 h-10 flex-shrink-0 thumbnail-area">
+            {song.thumbnail ? (
+              <img
+                src={song.thumbnail}
+                alt={song.title}
+                className="w-10 h-10 rounded-md object-cover"
               />
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleStatusChange('PLAYBOOK')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Playbook
-                </button>
-                <button
-                  onClick={() => handleStatusChange('PARKED')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                  <PauseCircle className="w-4 h-4" />
-                  Park
-                </button>
-                <button
-                  onClick={() => handleStatusChange('DISCARDED')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Discard
-                </button>
+            ) : (
+              <div className="w-10 h-10 rounded-md bg-gray-700/50 flex items-center justify-center">
+                <Music className="w-5 h-5 text-gray-400" />
               </div>
+            )}
+            <button
+              className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-md opacity-0 hover:opacity-100 thumbnail-area"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentSong(song);
+                setIsPlaying(true);
+              }}
+            >
+              <Play className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Title and Artist */}
+          <div className="min-w-0 flex-1 ml-3">
+            <h3 className="font-medium truncate leading-tight">{song.title}</h3>
+            <p className="text-sm text-gray-400 truncate leading-tight">{song.artist}</p>
+          </div>
+
+          {/* Status and Actions */}
+          <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+            <div className="flex items-center mr-2">
+              {song.status === SONG_STATUS.SUGGESTED ? (
+                <div className="flex items-center">
+                  <Clock className="w-4 h-4 text-blue-400 mr-1" />
+                  <span className={`text-sm ${needsUserAction ? 'text-orange-400' : 'text-gray-400'}`}>
+                    {voteCount}/{memberCount}
+                  </span>
+                </div>
+              ) : song.status === SONG_STATUS.REVIEW ? (
+                <div className="flex items-center space-x-1">
+                  {isHighScore && <Flame className="w-5 h-5 text-orange-400" />}
+                  {hasZeroVote && <ThumbsDown className="w-5 h-5 text-red-400" />}
+                  <span className={`text-sm font-medium ${isHighScore ? 'text-orange-400' :
+                      hasZeroVote ? 'text-red-400' : 'text-gray-400'
+                    }`}>
+                    {score}%
+                  </span>
+                </div>
+
+              ) : song.status === SONG_STATUS.PRACTICE ? (
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: memberCount }).map((_, index) => {
+                    const userIds = Object.keys(song.ragStatus || {});
+                    const userId = userIds[index];
+                    const ragStatus = userId ? song.ragStatus?.[userId]?.status : null;
+                    const isCurrentUser = userId === user?.uid;
+
+                    return (
+                      <div
+                        key={userId || `empty-${index}`}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full transition-colors duration-200",
+                          {
+                            'bg-red-500': ragStatus === 'RED',
+                            'bg-yellow-500': ragStatus === 'AMBER',
+                            'bg-green-500': ragStatus === 'GREEN',
+                            'bg-gray-500': !ragStatus,
+                            'ring-1 ring-white/20': isCurrentUser
+                          }
+                        )}
+                        title={userId ? `${userId}: ${ragStatus?.toLowerCase() || 'not set'}` : 'Member not voted'}
+                      />
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
-          ) : (type === 'suggestions' || type === 'voting') && (
-            <VotingControls
-              currentVote={song.votes?.[user?.uid ?? '']?.value ?? null}
-              onVote={handleVote}
-            />
-          )}
+
+            {/* Action Buttons */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMetadataOpen(true);
+              }}
+              className="p-1.5 hover:bg-gray-700 rounded-full"
+            >
+              <ListMusic className="w-4 h-4 text-gray-400" />
+            </button>
+            {/* Conditional render based on delete mode */}
+            {deleteMode && isAdmin ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(e);
+                }}
+                className="p-1.5 bg-red-500/20 hover:bg-red-500/30 rounded-full transition-colors"
+                title="Remove song"
+              >
+                <Trash2 className="w-4 h-4 text-red-400" />
+              </button>
+            ) : (
+              renderActionButton()
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Delete Mode Overlay */}
+        {deleteMode && isAdmin && (
+          <div
+            className="absolute inset-0 bg-red-900/80 flex items-center justify-center cursor-pointer rounded-lg"
+            onClick={handleDelete}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <Trash2 className="w-5 h-5 text-white" />
+              <span className="text-xs text-white">Remove</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Metadata Modal */}
+      <SongMetadataModal
+        song={song}
+        isOpen={isMetadataOpen}
+        onClose={() => setIsMetadataOpen(false)}
+        context="songCard"
+      />
+
+      {/* Actions Modal */}
+      <SongActionsModal
+        song={song}
+        isOpen={isActionsOpen}
+        onClose={() => setIsActionsOpen(false)}
+        onVote={handleVote}
+        onStatusChange={handleStatusChange}
+        onRagStatusUpdate={handleRagStatusUpdate}
+        currentVote={song.votes?.[user?.uid ?? '']?.value ?? null}
+        currentRagStatus={song.ragStatus?.[user?.uid ?? '']?.status ?? null}
+        memberCount={memberCount}
+        voteCount={voteCount}
+      />
     </div>
   );
 }

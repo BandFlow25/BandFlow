@@ -74,7 +74,6 @@ export const SongHelpers = {
     total: number;       // All non-playbook songs
     active: number;      // All songs excluding parked/discarded/playbook
     suggested: number;
-    voting: number;
     review: number;
     practice: number;
     playbook: number;
@@ -86,7 +85,6 @@ export const SongHelpers = {
         total: 0,
         active: 0,
         suggested: 0,
-        voting: 0,
         review: 0,
         practice: 0,
         playbook: 0,
@@ -103,7 +101,6 @@ export const SongHelpers = {
         total: 0,
         active: 0,
         suggested: 0,
-        voting: 0,
         review: 0,
         practice: 0,
         playbook: 0,
@@ -136,7 +133,6 @@ export const SongHelpers = {
         total: 0,
         active: 0,
         suggested: 0,
-        voting: 0,
         review: 0,
         practice: 0,
         playbook: 0,

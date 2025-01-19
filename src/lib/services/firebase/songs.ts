@@ -1,7 +1,7 @@
 // src/lib/services/firebase/songs.ts
 import { collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, serverTimestamp, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
-import { BaseSong, BandSong, SongStatus, RAGStatus } from '@/lib/types/song';
+import { BaseSong, BandSong, SongStatus, RAGStatus, SONG_STATUS } from '@/lib/types/song';
 import { auth } from '@/lib/config/firebase';
 import { getSongMetadata } from '@/lib/services/ai/SongMetadata';
 import { COLLECTIONS } from '@/lib/constants';
@@ -18,54 +18,22 @@ const getBandMembersCollection = (bandId: string) => {
 
 
 
-
-
-
-
+// src/lib/services/firebase/songs.ts
 export async function addVote(
   bandId: string,
   songId: string,
   userId: string,
   score: number
 ): Promise<void> {
-  console.log('AddVote: Starting with params:', {
-    bandId,
-    songId,
-    userId,
-    score,
-    currentAuthUser: auth.currentUser?.uid // Add this to check auth state
-  });
-  
   try {
     const songRef = doc(getBandSongsCollection(bandId), songId);
-    console.log('AddVote: Document path:', songRef.path);
-
-    // Check if user is band member before attempting update
-    const memberRef = doc(getBandMembersCollection(bandId), userId);
-    const memberDoc = await getDoc(memberRef);
-    
-    console.log('AddVote: Member check:', {
-      memberPath: memberRef.path,
-      exists: memberDoc.exists(),
-      role: memberDoc.data()?.role
-    });
-
-    if (!memberDoc.exists()) {
-      throw new Error('User is not a band member');
-    }
-
     const songDoc = await getDoc(songRef);
+    
     if (!songDoc.exists()) {
       throw new Error('Song not found');
     }
 
     const songData = songDoc.data();
-    console.log('AddVote: Current song data:', {
-      id: songDoc.id,
-      status: songData.status,
-      votes: songData.votes || {}
-    });
-
     const updatedVotes = {
       ...(songData.votes || {}),
       [userId]: {
@@ -74,32 +42,25 @@ export async function addVote(
       }
     };
 
+    // Get total member count for comparison
     const membersSnapshot = await getDocs(getBandMembersCollection(bandId));
     const totalMembers = membersSnapshot.size;
     const totalVotes = Object.keys(updatedVotes).length;
 
-    console.log('AddVote: Vote counts:', {
-      totalMembers,
-      totalVotes,
-      hasVoted: Object.keys(updatedVotes)
-    });
-
+    // Only update status to REVIEW when all members have voted
     let newStatus = songData.status;
-    if (songData.status === 'SUGGESTED') {
-      newStatus = 'VOTING';
-    } else if (songData.status === 'VOTING' && totalVotes >= totalMembers) {
-      newStatus = 'REVIEW';
+    if (songData.status === SONG_STATUS.SUGGESTED && totalVotes >= totalMembers) {
+      newStatus = SONG_STATUS.REVIEW;
     }
 
     const updateData = {
       votes: updatedVotes,
       status: newStatus,
+      votingMemberCount: totalMembers, // Store this for score calculations
       updatedAt: serverTimestamp()
     };
 
-    console.log('AddVote: Updating document:', updateData);
     await updateDoc(songRef, updateData);
-    console.log('AddVote: Successfully updated document');
 
   } catch (error) {
     console.error('AddVote: Error with full context:', {
@@ -107,13 +68,11 @@ export async function addVote(
       bandId,
       songId,
       userId,
-      authUid: auth.currentUser?.uid,
       location: 'songs.addVote'
     });
     throw error;
   }
 }
-
 export async function updateRagStatus(
   bandId: string,
   songId: string,

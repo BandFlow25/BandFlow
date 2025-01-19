@@ -14,6 +14,17 @@ import {
   BookOpen, Calendar, ListMusic, ImageIcon, Shuffle, GitBranch, Library
 } from 'lucide-react';
 
+interface SongCount {
+  total: number;
+  active: number;
+  suggested: number;
+  review: number;
+  practice: number;
+  playbook: number;
+  parked: number;
+  discarded: number;
+}
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [songMenuOpen, setSongMenuOpen] = useState(true);
@@ -23,14 +34,17 @@ export default function Sidebar() {
   const { user, profile, logout } = useAuth();
   const { activeBand, isAdmin, clearActiveBand } = useBand();
   const searchParams = useSearchParams();
-  const [songCounts, setSongCounts] = useState({
+  const [songCounts, setSongCounts] = useState<SongCount>({
     total: 0,
+    active: 0,
     suggested: 0,
-    voting: 0,
     review: 0,
     practice: 0,
-    playbook: 0
+    playbook: 0,
+    parked: 0,
+    discarded: 0
   });
+  
 
   useEffect(() => {
     const handleResize = () => {
@@ -94,7 +108,7 @@ export default function Sidebar() {
           name: 'Setlists',
           href: `/bands/${activeBand.id}/setlists`
         }
-      ]
+      ],
     },
     {
       title: 'Pipeline',
@@ -103,7 +117,7 @@ export default function Sidebar() {
         {
           name: 'Suggestions',
           href: `/bands/${activeBand.id}/pipeline/suggestions`,
-          count: songCounts.voting + songCounts.suggested,
+          count: songCounts.suggested,  // Just use suggested count
           highlight: true
         },
         {
@@ -133,24 +147,32 @@ export default function Sidebar() {
     return pathname === href;
   };
 
-  /// TODO: Check with Claude - think this comes from types?
+ 
   const songMenuItems = [
     {
-      name: 'Suggestions',
-      href: `/bands/${activeBand.id}/pipeline/suggestions`,
-      count: songCounts.voting + songCounts.suggested,
-      highlight: true,
-      icon: <ChevronRight />
-    },
-    {
-      name: 'Practice',
-      href: `/bands/${activeBand.id}/pipeline/practice`,
-      count: songCounts.practice,
-      icon: <ChevronRight />
+      items: [
+        {
+          name: 'Songs Suggestions',
+          href: `/bands/${activeBand.id}/songs?view=suggestions`,
+          count: songCounts.suggested + songCounts.review,
+          highlight: true
+        },
+        {
+          name: 'Practice List',
+          href: `/bands/${activeBand.id}/songs?view=practice`,
+          count: songCounts.practice
+        },
+        {
+          name: 'All Songs',
+          href: `/bands/${activeBand.id}/songs`,
+          count: songCounts.total
+        }
+      ]
     }
   ];
 
-  return (
+
+return (
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -173,9 +195,7 @@ export default function Sidebar() {
           "lg:static": true,
         }
       )}>
-
-
-        {/* Update the header section in Sidebar.tsx */}
+        {/* Header */}
         <div className="p-4 border-b border-gray-800 flex items-center">
           <Link
             href={`/bands/${activeBand.id}`}
@@ -213,8 +233,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-
-        {/* Menu Context */}
+        {/* Navigation Menu */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <Link
             href={`/bands/${activeBand.id}/playbook`}
@@ -263,43 +282,47 @@ export default function Sidebar() {
                 className="w-full flex items-center justify-between px-2 py-2 text-gray-300 hover:text-white"
               >
                 <div className="flex items-center">
-                  <Music className="w-5 h-5 mr-2" />
-                  <span>New Songs</span>
+                  <GitBranch className="w-5 h-5 mr-2" />
+                  <span>Song Pipeline</span>
                 </div>
                 {songMenuOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               {songMenuOpen && (
                 <div className="ml-4 space-y-1 mt-2">
-                  {songMenuItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={cn(
-                        "flex items-center justify-between px-2 py-1.5 rounded-lg text-sm group",
-                        isMenuItemActive(item.href)
-                          ? "bg-orange-500 text-white"
-                          : "text-gray-400 hover:text-white hover:bg-gray-800",
-                        item.highlight && item.count > 0 && "border-l-2 border-orange-500"
-                      )}
-                    >
-                      <div className="flex items-center">
-                        {item.icon && <span className="mr-2">{item.icon}</span>}
-                        <span className="truncate">{item.name}</span>
-                      </div>
-                      {item.count > 0 && (
-                        <span className={cn(
-                          "ml-2 px-2 py-0.5 rounded-full text-xs",
-                          isMenuItemActive(item.href)
-                            ? "bg-white/20"
-                            : item.highlight
-                              ? "bg-orange-500/20 text-orange-400"
-                              : "bg-gray-700/50"
-                        )}>
-                          {item.count}
-                        </span>
-                      )}
-                    </Link>
+                  {songMenuItems.map((menuItem, idx) => (
+                    <div key={idx}>
+                      {menuItem.items.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={cn(
+                            "flex items-center justify-between px-2 py-1.5 rounded-lg text-sm group",
+                            isMenuItemActive(item.href)
+                              ? "bg-orange-500 text-white"
+                              : "text-gray-400 hover:text-white hover:bg-gray-800",
+                            item.highlight && item.count > 0 && "border-l-2 border-orange-500"
+                          )}
+                        >
+                          <div className="flex flex-col">
+                            <span className="truncate">{item.name}</span>
+                    
+                          </div>
+                          {item.count > 0 && (
+                            <span className={cn(
+                              "ml-2 px-2 py-0.5 rounded-full text-xs",
+                              isMenuItemActive(item.href)
+                                ? "bg-white/20"
+                                : item.highlight
+                                  ? "bg-orange-500/20 text-orange-400"
+                                  : "bg-gray-700/50"
+                            )}>
+                              {item.count}
+                            </span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
@@ -333,8 +356,7 @@ export default function Sidebar() {
           </div>
         </nav>
 
-
-        {/* Footer header section in Sidebar.tsx */}
+        {/* Footer */}
         <div className="mt-auto p-4 border-t border-gray-800 bg-gray-800/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">

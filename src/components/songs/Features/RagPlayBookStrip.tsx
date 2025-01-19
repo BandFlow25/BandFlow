@@ -18,6 +18,7 @@ export function RagPlayBookStrip({ song, className }: RagPlayBookStripProps) {
   const stripHeight = 48; // Matches the thumbnail height
   const sectionHeight = stripHeight / memberCount;
 
+  //"w-1.5 flex flex-col",  // Made strip slightly wider
   return (
     <div 
       className={cn(

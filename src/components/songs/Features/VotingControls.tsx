@@ -8,6 +8,7 @@ interface VotingControlsProps {
   onVote: (score: number) => void;
 }
 
+
 export function VotingControls({ currentVote, onVote }: VotingControlsProps) {
   const [hoveredRating, setHoveredRating] = useState<number | null>(null);
 

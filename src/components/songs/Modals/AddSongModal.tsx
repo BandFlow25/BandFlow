@@ -208,7 +208,7 @@ export default function AddSongModal() {
       
       if (!baseSongId) {
         // Show AI processing toast - with forced minimum duration
-        toast.loading("🤖 BandFlow AI Helper is analyzing your song...", {
+        toast.loading("🤖 AI Helper is enhancing song data...", {
           id: "ai-helper",
           duration: 3000 // Minimum display time
         });
@@ -274,7 +274,6 @@ export default function AddSongModal() {
             <X className="w-5 h-5" />
           </button>
         </DialogHeader>
-
         <div className="p-4">
           <Input
             value={query}
@@ -284,8 +283,16 @@ export default function AddSongModal() {
             className="w-full bg-gray-800 border-gray-700 mb-4"
           />
 
-          {isLoading && <p className="text-sm text-gray-500">Searching...</p>}
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {isLoading && (
+            <p className="text-sm text-gray-500">Searching...</p>
+          )}
+
+          {/* Single error display */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
 
           {query && showSuggestions && suggestions.length > 0 && (
             <div className="overflow-y-auto space-y-2">
@@ -331,48 +338,22 @@ export default function AddSongModal() {
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                 <Button
                   onClick={() => handleAddSong("SUGGESTED")}
-                  disabled={loadingState === 'processing'}
-                  className={cn(
-                    "w-full sm:w-[200px] h-[48px]", // Fixed height prevents jumping
-                    loadingState === 'processing'
-                      ? "bg-orange-500 text-white"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
-                  )}
+                  disabled={isLoading}
+                  className="w-full sm:w-[200px] h-[48px] bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 transition-colors"
                 >
-                  {loadingState === 'processing' ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <Sparkles className="w-5 h-5 animate-pulse" />
-                      <span className="text-sm">{processingText}</span>
-                    </div>
-                  ) : (
-                    "Add to Suggestions"
-                  )}
+                  Add to Suggestions
                 </Button>
 
                 <Button
                   onClick={() => handleAddSong("PLAYBOOK")}
-                  disabled={loadingState === 'processing'}
-                  className={cn(
-                    "w-full sm:w-[200px] h-[48px]", // Fixed height prevents jumping
-                    loadingState === 'processing'
-                      ? "bg-orange-500 text-white"
-                      : "bg-orange-500 hover:bg-orange-600 text-white"
-                  )}
+                  disabled={isLoading}
+                  className="w-full sm:w-[200px] h-[48px] bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 transition-colors"
                 >
-                  {loadingState === 'processing' ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <Sparkles className="w-5 h-5 animate-pulse" />
-                      <span className="text-sm">{processingText}</span>
-                    </div>
-                  ) : (
-                    "Add to Play Book"
-                  )}
+                  Add to Play Book
                 </Button>
               </div>
             </div>
           )}
-
-          {error && <p className="text-red-500 mt-4">{error}</p>}
         </div>
       </DialogContent>
     </Dialog>

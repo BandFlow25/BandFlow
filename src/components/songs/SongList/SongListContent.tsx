@@ -9,6 +9,7 @@ interface SongListContentProps {
   error: Error | null;
   listType: SongListType;
   onSongDeleted?: () => void;
+  deleteMode: boolean;
 }
 
 export function SongListContent({
@@ -17,6 +18,7 @@ export function SongListContent({
   error,
   listType,
   onSongDeleted,
+  deleteMode,
 }: SongListContentProps) {
   if (isLoading) {
     return (
@@ -51,7 +53,8 @@ export function SongListContent({
           key={song.id}
           song={song}
           type={listType}
-          {...(onSongDeleted ? { onSongDeleted } : {})}  // Only pass if defined
+          deleteMode={deleteMode || false}
+          {...(onSongDeleted ? { onSongDeleted } : {})}
         />
       ))}
     </div>
@@ -61,11 +64,9 @@ export function SongListContent({
 function getEmptyMessage(type: SongListType): string {
   switch (type) {
     case 'suggestions':
-      return 'No song suggestions yet';
-    case 'voting':
-      return 'No songs currently in voting';
+      return 'No songs to vote on';
     case 'review':
-      return 'No songs to review';
+      return 'No songs in review';
     case 'practice':
       return 'No songs in practice';
     case 'playbook':
