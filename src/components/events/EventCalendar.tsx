@@ -48,8 +48,6 @@ export default function EventCalendar() {
 
 
 
-
-
     <div className="h-[calc(100vh-12rem)] bg-gray-800 rounded-lg p-4">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
