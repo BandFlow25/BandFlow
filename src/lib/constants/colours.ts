@@ -23,17 +23,20 @@ export const STATUS_COLORS = {
       text: 'text-orange-500',
       textLight: 'text-orange-400'
     },
+   
     PRACTICE: {
-      base: 'yellow-400',
-      light: 'yellow-300',
-      border: 'border-yellow-400',
-      bg: 'bg-yellow-400',
-      bgHover: 'hover:bg-yellow-500',
-      bgFaded: 'bg-yellow-400/20',
-      bgFadedHover: 'hover:bg-yellow-400/30',
-      text: 'text-yellow-400',
-      textLight: 'text-yellow-300'
-    },
+        base: 'yellow-400',
+        light: 'yellow-300',
+        border: 'border-yellow-400',
+        bg: 'bg-gradient-to-b from-yellow-500/20 to-yellow-600/30',  // Brighter gradient
+        bgHover: 'hover:bg-yellow-500',
+        bgFaded: 'bg-yellow-400/20',  // No opacity for practice cards
+        bgFadedHover: 'hover:bg-yellow-900',
+        gradient: 'bg-gradient-to-b from-yellow-950/80 via-yellow-900/70 to-yellow-950/90',
+        text: 'text-yellow-400',
+        textLight: 'text-yellow-300'
+    } as const,
+
     REVIEW: {
       base: 'green-500',
       light: 'green-400',
@@ -53,8 +56,8 @@ export const STATUS_COLORS = {
       bgHover: 'hover:bg-gray-700',
       bgFaded: 'bg-gray-600/20',
       bgFadedHover: 'hover:bg-gray-600/30',
-      text: 'text-gray-600',
-      textLight: 'text-gray-500'
+      text: 'text-white-600',
+      textLight: 'text-white-500'
     },
     PARKED: {
       base: 'blue-500',  // Different shade than PLAYBOOK if needed

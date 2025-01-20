@@ -6,6 +6,7 @@ import { SetlistProvider } from '@/contexts/SetlistProvider';
 import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
 import DroppableSet from '@/components/songs/SetLists/DroppableSet';
+import { AddSetlistSongsModal } from '@/components/songs/Modals/AddSetListSongsModal';
 import { useSetlist } from '@/contexts/SetlistProvider';
 import type { BandSong } from '@/lib/types/song';
 import { PageLayout } from '@/components/layout/PageLayout';
@@ -13,11 +14,11 @@ import { Clock, ListMusic, Edit2, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
-import CreateSetlistModal from '@/components/songs/SetLists/CreateSetlistModal';
+import CreateSetlistModal from '@/components/songs/Modals/CreateSetlistModal';
 import { updateSetlistSongs } from '@/lib/services/firebase/setlists';
-import { 
-  calculateSetDurationInSeconds, 
-  getSetDurationInfo 
+import {
+  calculateSetDurationInSeconds,
+  getSetDurationInfo
 } from '@/lib/services/bandflowhelpers/SetListHelpers';
 import {
   DndContext,
@@ -36,7 +37,7 @@ async function fetchSongDetails(bandId: string, songId: string): Promise<BandSon
   try {
     const songRef = doc(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_SONGS, songId);
     const songDoc = await getDoc(songRef);
-    
+
     if (!songDoc.exists()) return null;
     return { id: songDoc.id, ...songDoc.data() } as BandSong;
   } catch (error) {
@@ -49,7 +50,7 @@ function SetlistDetailsPageContent() {
   const { activeBand, isActiveBandLoaded } = useBand();
   const { setlist, refreshSetlist, isLoading: isSetlistLoading } = useSetlist();
   //const router = useRouter();
-  
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeSetNumber, setActiveSetNumber] = useState<number | null>(null);
@@ -57,6 +58,8 @@ function SetlistDetailsPageContent() {
   const [songDetails, setSongDetails] = useState<Record<string, BandSong>>({});
   const [selectedSetNumber, setSelectedSetNumber] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showAddSongsModal, setShowAddSongsModal] = useState(false);
+  const [targetSetNumber, setTargetSetNumber] = useState<number | null>(null);
 
   useEffect(() => {
     const loadSongDetails = async () => {
@@ -141,9 +144,9 @@ function SetlistDetailsPageContent() {
     }
 
     if (typeof activeSetNumber === 'number' &&
-        typeof overSetNumber === 'number' &&
-        activeSetNumber !== overSetNumber &&
-        activeBand?.id) {
+      typeof overSetNumber === 'number' &&
+      activeSetNumber !== overSetNumber &&
+      activeBand?.id) {
 
       const targetSetSongs = setlist.songs.filter(s => s.setNumber === overSetNumber);
       const updatedSongs = setlist.songs.map(song => {
@@ -228,89 +231,130 @@ function SetlistDetailsPageContent() {
     }
   };
 
+  const handleSetSelect = (setNumber: number) => {
+    setTargetSetNumber(setNumber);
+    setShowAddSongsModal(true);
+  };
+
+  const handleAddSongs = async (songIds: string[]) => {
+    if (!setlist || !activeBand?.id || !targetSetNumber) return;
+
+    // Get current songs in the target set
+    const targetSetSongs = setlist.songs.filter(s => s.setNumber === targetSetNumber);
+    const startPosition = targetSetSongs.length;
+
+    // Create new song entries
+    const newSongs = songIds.map((songId, index) => ({
+      songId,
+      setNumber: targetSetNumber,
+      position: startPosition + index,
+      isPlayBookActive: true,
+    }));
+
+    // Combine existing songs with new ones
+    const updatedSongs = [...setlist.songs, ...newSongs];
+
+    try {
+      await updateSetlistSongs(activeBand.id, setlist.id, updatedSongs);
+      await refreshSetlist();
+    } catch (error) {
+      console.error('Error adding songs:', error);
+      setError('Failed to add songs');
+    }
+  };
+
   return (
     <PageLayout title={setlist.name}>
-      <div className="p-4">
-        <Link
-          href={`/bands/${activeBand.id}/setlists`}
-          className="inline-flex items-center text-gray-400 hover:text-white transition-colors mb-6"
-        >
-          <ChevronLeft className="w-5 h-5 mr-1" />
-          Back to setlists
-        </Link>
+      <div className="h-full flex flex-col overflow-hidden">
+        {/* Header Area - Fixed */}
+        <div className="flex-none px-4 py-4 space-y-4 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800">
+          <Link
+            href={`/bands/${activeBand.id}/setlists`}
+            className="inline-flex items-center text-gray-400 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 mr-1" />
+            Back to setlists
+          </Link>
 
-        <div className="bg-gray-800 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white">{setlist.name}</h2>
-              <div className="flex items-center gap-4 mt-2 text-gray-400">
-                <div className="flex items-center gap-1">
-                  <ListMusic className="w-4 h-4" />
-                  <span>{setlist.songs.length} songs</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  <span>
-                    {setlist.format.numSets} sets, {setlist.format.setDuration}min each
-                  </span>
+          {/* Setlist Info Card */}
+          <div className="bg-gray-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">{setlist.name}</h2>
+                <div className="flex items-center gap-4 mt-2 text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <ListMusic className="w-4 h-4" />
+                    <span>{setlist.songs.length} songs</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>
+                      {setlist.format.numSets} sets, {setlist.format.setDuration}min each
+                    </span>
+                  </div>
                 </div>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowEditModal(true)}
+                className="text-gray-400 hover:text-white"
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowEditModal(true)}
-              className="text-gray-400 hover:text-white"
-            >
-              <Edit2 className="w-4 h-4" />
-            </Button>
           </div>
         </div>
 
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          collisionDetection={closestCenter}
-          measuring={{
-            droppable: {
-              strategy: MeasuringStrategy.Always
-            }
-          }}
-        >
-          <div className="space-y-6">
-            {Array.from({ length: setlist?.format.numSets || 0 }).map((_, setIndex) => {
-              const setNumber = setIndex + 1;
-              const setSongs = setlist?.songs
-                .filter((song) => song.setNumber === setNumber)
-                .sort((a, b) => a.position - b.position) || [];
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4">
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCenter}
+            measuring={{
+              droppable: {
+                strategy: MeasuringStrategy.Always
+              }
+            }}
+          >
+            <div className="space-y-6">
+              {Array.from({ length: setlist?.format.numSets || 0 }).map((_, setIndex) => {
+                const setNumber = setIndex + 1;
+                const setSongs = setlist?.songs
+                  .filter((song) => song.setNumber === setNumber)
+                  .sort((a, b) => a.position - b.position) || [];
 
-              const setDurationSeconds = calculateSetDurationInSeconds(
-                setSongs.map(song => songDetails[song.songId]).filter(Boolean)
-              );
-              const durationInfo = getSetDurationInfo(
-                setDurationSeconds,
-                setlist?.format.setDuration || 45
-              );
+                const setDurationSeconds = calculateSetDurationInSeconds(
+                  setSongs.map(song => songDetails[song.songId]).filter(Boolean)
+                );
+                const durationInfo = getSetDurationInfo(
+                  setDurationSeconds,
+                  setlist?.format.setDuration || 45
+                );
 
-              return (
-                <DroppableSet
-                  key={setNumber}
-                  setNumber={setNumber}
-                  setSongs={setSongs}
-                  activeSetNumber={activeSetNumber}
-                  activeId={activeId}
-                  songDetails={songDetails}
-                  isLoadingSongs={isLoadingSongs}
-                  durationInfo={durationInfo}
-                  onSongRemove={handleSongRemove}
-                  onSetNumberSelect={setSelectedSetNumber}
-                />
-              );
-            })}
-          </div>
-        </DndContext>
+                return (
+                  <DroppableSet
+                    key={setNumber}
+                    setNumber={setNumber}
+                    setSongs={setSongs}
+                    activeSetNumber={activeSetNumber}
+                    activeId={activeId}
+                    songDetails={songDetails}
+                    isLoadingSongs={isLoadingSongs}
+                    durationInfo={durationInfo}
+                    onSongRemove={handleSongRemove}
+                    onSetNumberSelect={handleSetSelect}
+                  />
+                );
+              })}
+            </div>
+          </DndContext>
+        </div>
 
+
+        {/* Edit SetLIST Modal */}
         {showEditModal && setlist && (
           <CreateSetlistModal
             onClose={() => setShowEditModal(false)}
@@ -320,6 +364,20 @@ function SetlistDetailsPageContent() {
               format: setlist.format
             }}
             onUpdate={refreshSetlist}
+          />
+        )}
+
+        {/* Add Songs Modal */}
+        {showAddSongsModal && targetSetNumber && (
+          <AddSetlistSongsModal
+            isOpen={showAddSongsModal}
+            onClose={() => {
+              setShowAddSongsModal(false);
+              setTargetSetNumber(null);
+            }}
+            onAddSongs={handleAddSongs}
+            currentSetNumber={targetSetNumber}
+            setlist={setlist}  // Changed from existingSetlistSongs to full setlist
           />
         )}
       </div>

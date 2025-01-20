@@ -49,6 +49,7 @@ export function SongActionsModal({
 }: SongActionsModalProps) {
   // States for voting UI
   const [hoveredRating, setHoveredRating] = useState<number | null>(null);
+  const user = { uid: 'exampleUserId' }; // Replace this with the actual user object or import
 
   // Extract Spotify ID from spotifyUid
   const spotifyId = song.spotifyUid?.split(':').pop() || '';
@@ -68,7 +69,7 @@ export function SongActionsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gray-900 text-gray-100 border-gray-800">
+      <DialogContent className="bg-gray-900 rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">{song.title}</DialogTitle>
           <button onClick={onClose} className="absolute right-3 top-3 text-gray-400 hover:text-white">
@@ -133,6 +134,7 @@ export function SongActionsModal({
                         : "text-gray-400"
                     )}
                   >
+
                     <Star
                       className="w-6 h-6"
                       fill={hoveredRating !== null && rating <= hoveredRating ? "currentColor" : "none"}
@@ -179,6 +181,7 @@ export function SongActionsModal({
                 )}
               </div>
 
+
               <div>
                 <p className="text-sm text-gray-400 mb-3">Move to...</p>
                 <div className="flex gap-2">
@@ -187,15 +190,14 @@ export function SongActionsModal({
                     onClick={() => onStatusChange(SONG_STATUS.PRACTICE)}
                     className={cn(
                       "flex-1 p-3 rounded-lg transition-colors group",
-                      STATUS_COLORS.PRACTICE.bgFaded, 
-                      STATUS_COLORS.PRACTICE.bgFadedHover
+                      "bg-yellow-400/20 hover:bg-yellow-400/30"  // Combined base and hover states
                     )}
                   >
                     <ListChecks className={cn(
                       "w-5 h-5 mx-auto group-hover:scale-110 transition-transform",
-                      STATUS_COLORS.PRACTICE.text
+                      "text-yellow-400"
                     )} />
-                    <span className={cn("text-xs mt-1", STATUS_COLORS.PRACTICE.text)}>Practice</span>
+                    <span className="text-xs mt-1 text-yellow-400">Practice</span>
                   </button>
 
                   {/* Park Button */}
@@ -203,15 +205,14 @@ export function SongActionsModal({
                     onClick={() => onStatusChange(SONG_STATUS.PARKED)}
                     className={cn(
                       "flex-1 p-3 rounded-lg transition-colors group",
-                      STATUS_COLORS.PARKED.bgFaded,
-                      STATUS_COLORS.PARKED.bgFadedHover  // Make sure this is correct in the constants
+                      "bg-blue-500/20 hover:bg-blue-500/30"  // Combined base and hover states
                     )}
                   >
                     <PauseCircle className={cn(
                       "w-5 h-5 mx-auto group-hover:scale-110 transition-transform",
-                      STATUS_COLORS.PARKED.text
+                      "text-blue-400"
                     )} />
-                    <span className={cn("text-xs mt-1", STATUS_COLORS.PARKED.text)}>Park</span>
+                    <span className="text-xs mt-1 text-blue-400">Park</span>
                   </button>
 
                   {/* Discard Button */}
@@ -219,117 +220,231 @@ export function SongActionsModal({
                     onClick={() => onStatusChange(SONG_STATUS.DISCARDED)}
                     className={cn(
                       "flex-1 p-3 rounded-lg transition-colors group",
-                      STATUS_COLORS.DISCARDED.bgFaded,
-                      STATUS_COLORS.DISCARDED.bgFadedHover
+                      "bg-gray-600/20 hover:bg-gray-600/30"  // Combined base and hover states
                     )}
                   >
                     <XCircle className={cn(
                       "w-5 h-5 mx-auto group-hover:scale-110 transition-transform",
-                      STATUS_COLORS.DISCARDED.text
+                      "text-gray-400"
                     )} />
-                    <span className={cn("text-xs mt-1", STATUS_COLORS.DISCARDED.text)}>Discard</span>
+                    <span className="text-xs mt-1 text-gray-400">Discard</span>
                   </button>
                 </div>
               </div>
             </div>
           )}
+
 
           {/* Practice State */}
           {song.status === SONG_STATUS.PRACTICE && (
             <div className="space-y-6 animate-fade-in">
-              <div className={cn(
-                "border rounded-lg p-6",
-                `${STATUS_COLORS.PRACTICE.border} ${STATUS_COLORS.PRACTICE.bgFaded}`
-              )}>
+              {/* Progress Indicator Section */}
+              <div className="space-y-4">
                 <h3 className={cn(
-                  "text-sm font-medium mb-4 flex items-center gap-2",
+                  "text-sm font-medium",
                   STATUS_COLORS.PRACTICE.text
                 )}>
-                  <CheckCircle2 className="w-4 h-4" />
-                  How well do you know this song?
+                  Band Progress
                 </h3>
+                <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
+                  <div className="flex gap-3">
+                    {Array.from({ length: memberCount }).map((_, index) => {
+                      const userIds = Object.keys(song.ragStatus || {});
+                      const userId = userIds[index];
+                      const ragStatus = userId ? song.ragStatus?.[userId]?.status : null;
+                      const isCurrentUser = userId === user?.uid;
 
-                {/* RAG Controls */}
-                <div className="flex items-center justify-center gap-4">
-                  {[
-                    { status: 'RED' as const, icon: Ban, label: "Not Ready" },
-                    { status: 'AMBER' as const, icon: AlertTriangle, label: "Getting There" },
-                    { status: 'GREEN' as const, icon: CheckCircle2, label: "Ready!" }
-                  ].map(({ status, icon: Icon, label }) => (
-                    <button
-                      key={status}
-                      onClick={() => onRagStatusUpdate(status)}
-                      className={cn(
-                        "p-3 rounded-lg transition-all flex flex-col items-center gap-1 group",
-                        {
-                          'bg-red-500/20 text-red-400 hover:bg-red-500/30': status === 'RED',
-                          'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30': status === 'AMBER',
-                          'bg-green-500/20 text-green-400 hover:bg-green-500/30': status === 'GREEN',
-                        },
-                        currentRagStatus === status && "ring-2 ring-white/20"
-                      )}
-                    >
-                      <Icon className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs">{label}</span>
-                    </button>
-                  ))}
+                      return (
+                        <div key={userId || `empty-${index}`} className="text-center space-y-2">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center",
+                            {
+                              'bg-red-500/20': ragStatus === 'RED',
+                              'bg-yellow-500/20': ragStatus === 'AMBER',
+                              'bg-green-500/20': ragStatus === 'GREEN',
+                              'bg-gray-700': !ragStatus,
+                              'ring-2 ring-white/20': isCurrentUser
+                            }
+                          )}>
+                            {/* Could add member initials or icons here */}
+                          </div>
+                          <div className={cn(
+                            "text-xs",
+                            {
+                              'text-red-400': ragStatus === 'RED',
+                              'text-yellow-400': ragStatus === 'AMBER',
+                              'text-green-400': ragStatus === 'GREEN',
+                              'text-gray-400': !ragStatus
+                            }
+                          )}>
+                            {ragStatus ? ragStatus.toLowerCase() : 'not set'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-400 mb-3">Move to...</p>
-                <div className="flex gap-2">
-                  {/* Play Book Button */}
+              {/* Update Your Status */}
+              <div className="space-y-4">
+                <h3 className={cn("text-sm font-medium", STATUS_COLORS.PRACTICE.text)}>
+                  Update Your Status
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => onRagStatusUpdate('RED')}
+                    className={cn(
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
+                      "bg-red-500/20 hover:bg-red-500/30",
+                      currentRagStatus === 'RED' && "ring-2 ring-red-500"
+                    )}
+                  >
+                    <Ban className="w-5 h-5 text-red-400" />
+                    <span className="text-xs text-red-400">Not Ready</span>
+                  </button>
+                  <button
+                    onClick={() => onRagStatusUpdate('AMBER')}
+                    className={cn(
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
+                      "bg-yellow-500/20 hover:bg-yellow-500/30",
+                      currentRagStatus === 'AMBER' && "ring-2 ring-yellow-500"
+                    )}
+                  >
+                    <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xs text-yellow-400">Getting There</span>
+                  </button>
+                  <button
+                    onClick={() => onRagStatusUpdate('GREEN')}
+                    className={cn(
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
+                      "bg-green-500/20 hover:bg-green-500/30",
+                      currentRagStatus === 'GREEN' && "ring-2 ring-green-500"
+                    )}
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    <span className="text-xs text-green-400">Ready!</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Move Options */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-gray-400">Song Actions</h3>
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => onStatusChange(SONG_STATUS.PLAYBOOK)}
                     className={cn(
-                      "flex-1 p-3 rounded-lg transition-colors group",
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
                       STATUS_COLORS.PLAYBOOK.bgFaded,
                       STATUS_COLORS.PLAYBOOK.bgFadedHover
                     )}
                   >
-                    <BookOpen className={cn(
-                      "w-5 h-5 mx-auto group-hover:scale-110 transition-transform",
-                      STATUS_COLORS.PLAYBOOK.text
-                    )} />
-                    <span className={cn("text-xs mt-1", STATUS_COLORS.PLAYBOOK.text)}>Play Book</span>
+                    <BookOpen className={cn("w-5 h-5", STATUS_COLORS.PLAYBOOK.text)} />
+                    <span className={cn("text-xs", STATUS_COLORS.PLAYBOOK.text)}>Play Book</span>
                   </button>
-
-                  {/* Park Button */}
                   <button
                     onClick={() => onStatusChange(SONG_STATUS.PARKED)}
                     className={cn(
-                      "flex-1 p-3 rounded-lg transition-colors group",
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
                       STATUS_COLORS.PARKED.bgFaded,
                       STATUS_COLORS.PARKED.bgFadedHover
                     )}
                   >
-                    <PauseCircle className={cn(
-                      "w-5 h-5 mx-auto group-hover:scale-110 transition-transform",
-                      STATUS_COLORS.PARKED.text
-                    )} />
-                    <span className={cn("text-xs mt-1", STATUS_COLORS.PARKED.text)}>Park</span>
+                    <PauseCircle className={cn("w-5 h-5", STATUS_COLORS.PARKED.text)} />
+                    <span className={cn("text-xs", STATUS_COLORS.PARKED.text)}>Park</span>
                   </button>
-
-                  {/* Discard Button */}
                   <button
                     onClick={() => onStatusChange(SONG_STATUS.DISCARDED)}
                     className={cn(
-                      "flex-1 p-3 rounded-lg transition-colors group",
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
                       STATUS_COLORS.DISCARDED.bgFaded,
                       STATUS_COLORS.DISCARDED.bgFadedHover
                     )}
                   >
-                    <XCircle className={cn(
-                      "w-5 h-5 mx-auto group-hover:scale-110 transition-transform",
-                      STATUS_COLORS.DISCARDED.text
-                    )} />
-                    <span className={cn("text-xs mt-1", STATUS_COLORS.DISCARDED.text)}>Discard</span>
+                    <XCircle className={cn("w-5 h-5", STATUS_COLORS.DISCARDED.text)} />
+                    <span className={cn("text-xs", STATUS_COLORS.DISCARDED.text)}>Discard</span>
                   </button>
                 </div>
               </div>
             </div>
           )}
+
+          {/* PlayBook State */}
+          {song.status === SONG_STATUS.PLAYBOOK && (
+            <div className="space-y-6 animate-fade-in">
+   
+              {/* Update Your Status - reuses same component as Practice */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Update Your Status</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => onRagStatusUpdate('RED')}
+                    className={cn(
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
+                      "bg-red-500/20 hover:bg-red-500/30",
+                      currentRagStatus === 'RED' && "ring-2 ring-red-500"
+                    )}
+                  >
+                    <Ban className="w-5 h-5 text-red-400" />
+                    <span className="text-xs text-red-400">Not Ready</span>
+                  </button>
+                  <button
+                    onClick={() => onRagStatusUpdate('AMBER')}
+                    className={cn(
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
+                      "bg-yellow-500/20 hover:bg-yellow-500/30",
+                      currentRagStatus === 'AMBER' && "ring-2 ring-yellow-500"
+                    )}
+                  >
+                    <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xs text-yellow-400">Getting There</span>
+                  </button>
+                  <button
+                    onClick={() => onRagStatusUpdate('GREEN')}
+                    className={cn(
+                      "p-3 rounded-lg transition-all flex flex-col items-center gap-2",
+                      "bg-green-500/20 hover:bg-green-500/30",
+                      currentRagStatus === 'GREEN' && "ring-2 ring-green-500"
+                    )}
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    <span className="text-xs text-green-400">Ready!</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Move Options */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-gray-400">Move to...</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => onStatusChange(SONG_STATUS.PRACTICE)}
+                    className="p-3 rounded-lg transition-all flex flex-col items-center gap-2 bg-yellow-500/20 hover:bg-yellow-500/30"
+                  >
+                    <ListChecks className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xs text-yellow-400">Practice</span>
+                  </button>
+                  <button
+                    onClick={() => onStatusChange(SONG_STATUS.PARKED)}
+                    className="p-3 rounded-lg transition-all flex flex-col items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30"
+                  >
+                    <PauseCircle className="w-5 h-5 text-blue-400" />
+                    <span className="text-xs text-blue-400">Park</span>
+                  </button>
+                  <button
+                    onClick={() => onStatusChange(SONG_STATUS.DISCARDED)}
+                    className="p-3 rounded-lg transition-all flex flex-col items-center gap-2 bg-gray-600/20 hover:bg-gray-600/30"
+                  >
+                    <XCircle className="w-5 h-5 text-gray-400" />
+                    <span className="text-xs text-gray-400">Discard</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+
         </div>
       </DialogContent>
     </Dialog>

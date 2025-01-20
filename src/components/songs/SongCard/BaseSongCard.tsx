@@ -107,16 +107,13 @@ export function BaseSongCard({
   };
 
   const getCardStyle = () => {
-    if (needsUserAction && song.status === SONG_STATUS.SUGGESTED) {
-      return `border-t-2 ${STATUS_COLORS.SUGGESTED.border} ${STATUS_COLORS.SUGGESTED.bgFaded}`;
-    }
     switch (song.status) {
+      case SONG_STATUS.PRACTICE:
+        return `border-t-2 ${STATUS_COLORS.PRACTICE.border} ${STATUS_COLORS.PRACTICE.bgFaded}`;
       case SONG_STATUS.SUGGESTED:
         return `border-t-2 ${STATUS_COLORS.SUGGESTED.border} ${STATUS_COLORS.SUGGESTED.bgFaded}`;
       case SONG_STATUS.REVIEW:
         return `border-t-2 ${STATUS_COLORS.REVIEW.border} ${STATUS_COLORS.REVIEW.bgFaded}`;
-      case SONG_STATUS.PRACTICE:
-        return `border-t-2 ${STATUS_COLORS.PRACTICE.border} ${STATUS_COLORS.PRACTICE.bgFaded}`;
       case SONG_STATUS.PARKED:
         return `border-t-2 ${STATUS_COLORS.PARKED.border} ${STATUS_COLORS.PARKED.bgFaded} opacity-75`;
       case SONG_STATUS.DISCARDED:
@@ -239,8 +236,8 @@ export function BaseSongCard({
                 </div>
               ) : song.status === SONG_STATUS.REVIEW ? (
                 <div className="flex items-center space-x-1">
-                  {isHighScore && <Flame className="w-5 h-5 text-orange-400" />}
-                  {hasZeroVote && <ThumbsDown className="w-5 h-5 text-red-400" />}
+                  {isHighScore && <Flame className="w-6 h-6 text-orange-400 animate-bounce" />}
+                  {hasZeroVote && <ThumbsDown className="w-5 h-5 text-red-400 animate-pulse" />}
                   <span className={`text-sm font-medium ${isHighScore ? 'text-orange-400' :
                       hasZeroVote ? 'text-red-400' : 'text-gray-400'
                     }`}>

@@ -8,9 +8,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  BookOpen, ListMusic, Music, 
-  ThumbsUp, Activity,PlayCircle , GitBranch, Calendar,
-  GraduationCap,Wrench ,Loader , ImageIcon
+  BookOpen, GitBranch, Calendar, Wrench , ImageIcon
 } from 'lucide-react';
 
 export default function BandPage() {
@@ -83,7 +81,7 @@ export default function BandPage() {
       icon: <BookOpen className="w-6 h-6" />,
       href: `/bands/${activeBand.id}/playbook`,
       count: songCounts.playbook > 0 ? `${songCounts.playbook} songs` : null,
-      color: "bg-green-500",
+      color: "bg-blue-500",
       primary: true
     },
 
@@ -138,7 +136,7 @@ export default function BandPage() {
       description: "Access band photos, videos, and files",
       icon: <ImageIcon className="w-6 h-6" />,
       href: `/bands/${activeBand.id}/media`,
-      color: "bg-indigo-500"
+      color: "bg-green-500"
     }
   ];
 

@@ -11,11 +11,14 @@ import { useSwipeable } from 'react-swipeable';
 
 interface SetlistSongCardProps {
   id: string;
-  songDetails: BandSong | undefined;
+  songDetails: BandSong;
   position: number;
   setNumber: number;
   isLoading?: boolean;
   onRemove?: () => void;
+  isEditMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 export function SetlistSongCard({

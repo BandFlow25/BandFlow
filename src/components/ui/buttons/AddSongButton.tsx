@@ -14,7 +14,7 @@ export default function AddSongButton() {
   return (
     <button 
       onClick={handleClick} 
-      className="absolute top-8 right-4 rounded-full bg-orange-500 p-2 hover:bg-orange-400 transition-colors"
+      className="absolute top-2 right-4 rounded-full bg-orange-500 p-2 hover:bg-orange-400 transition-colors"
     >
       {open ? (
         <MinusCircle className="w-6 h-6 text-white" />

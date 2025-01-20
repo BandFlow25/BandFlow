@@ -1,6 +1,7 @@
 //src/components/media/components/MediaGallery.tsx
 import { useState } from 'react';
 import { Upload, Image as ImageIcon, FileText, Video, X, Plus } from 'lucide-react';
+import ComingSoonOverlay from '@/components/ui/ComingSoonOverlay';
 
 type MediaItem = {
   id: string;
@@ -28,6 +29,13 @@ export default function MediaGallery() {
   };
 
   return (
+
+
+<div className="relative">
+      <ComingSoonOverlay message="Media Library Coming Soon!" />
+      <div className="h-[calc(100vh-12rem)] bg-gray-800 rounded-lg p-4"></div>
+
+
     <div className="space-y-6">
       {/* Upload Button */}
       <div className="flex justify-end">
@@ -89,6 +97,10 @@ export default function MediaGallery() {
           </div>
         </div>
       )}
+    </div>
+
+
+
     </div>
   );
 }

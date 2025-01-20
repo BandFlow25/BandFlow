@@ -1,5 +1,5 @@
 // components/layout/PageTitleHeader.tsx
-import  AddSongButton  from '@/components/ui/buttons/AddSongButton';
+import AddSongButton from '@/components/ui/buttons/AddSongButton';
 //import  AddMediaButton  from '@/components/ui/buttons/AddMediaButton';
 //import  AddEventButton  from '@/components/ui/buttons/AddEventButton';
 
@@ -11,17 +11,17 @@ interface PageTitleHeaderProps {
   pageType?: PageType;
 }
 
-export function PageTitleHeader({ 
-  title, 
-  count, 
-  pageType = 'songs' 
+export function PageTitleHeader({
+  title,
+  count,
+  pageType = 'songs'
 }: PageTitleHeaderProps) {
   const renderActionButton = () => {
     switch (pageType) {
       case 'media':
-       //return <AddMediaButton />;
+      //return <AddMediaButton />;
       case 'events':
-        //return <AddEventButton />;
+      //return <AddEventButton />;
       case 'setlists':
         return null;
       case 'songs':
@@ -31,14 +31,16 @@ export function PageTitleHeader({
   };
 
   return (
-    <div className="flex items-center justify-between px-8 h-16 bg-gray-900 border-b border-gray-800">
+    <div className="flex items-center justify-between px-12 h-14 bg-gray-900 border-b border-gray-800">
       <div className="flex items-baseline gap-2">
         <h1 className="text-xl font-semibold text-white">{title}</h1>
         {typeof count === 'number' && (
           <span className="text-sm text-gray-400">({count} songs)</span>
         )}
       </div>
-      {renderActionButton()}
+      
+        {renderActionButton()}
+   
     </div>
   );
 }

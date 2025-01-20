@@ -5,6 +5,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { DateSelectArg, EventClickArg } from '@fullcalendar/core';
+import ComingSoonOverlay from '@/components/ui/ComingSoonOverlay';
+
 
 interface Event {
   id: string;
@@ -39,6 +41,15 @@ export default function EventCalendar() {
   };
 
   return (
+
+<div className="relative">
+      <ComingSoonOverlay message="Events Coming Soon!" />
+      <div className="h-[calc(100vh-12rem)] bg-gray-800 rounded-lg p-4"></div>
+
+
+
+
+
     <div className="h-[calc(100vh-12rem)] bg-gray-800 rounded-lg p-4">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -61,6 +72,12 @@ export default function EventCalendar() {
         expandRows={true}
         themeSystem="standard"
       />
+    </div>
+
+
+
+
+
     </div>
   );
 }

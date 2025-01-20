@@ -153,22 +153,12 @@ export function SongList({ type }: { type: SongListType }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-none space-y-4 p-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">
-            {type === SONG_LIST_TYPES.ALL ? 'All Songs' : 
-             type === SONG_LIST_TYPES.SUGGESTIONS ? 'Suggestions' : 
-             type === SONG_LIST_TYPES.PRACTICE ? 'Practice List' : 'Songs'}
-            <span className="text-sm text-gray-400 ml-2">
-              ({filteredSongs.length})
-            </span>
-          </h1>
-        </div>
+        
 
         {/* Search */}
         <input
           type="text"
-          placeholder="Search songs..."
+          placeholder="Search songs....."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-gray-800 rounded-lg px-4 py-2 text-gray-100 border-gray-700"

@@ -10,7 +10,7 @@ import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import { COLLECTIONS } from '@/lib/constants';
 import type { Setlist } from '@/lib/types/setlist';
-import CreateSetlistModal from '@/components/songs/SetLists/CreateSetlistModal';
+import CreateSetlistModal from '@/components/songs/Modals/CreateSetlistModal';
 import { Button } from '@/components/ui/button';
 import { SearchHeader } from 'src/components/songs/Shared/SearchHeader';
 import { cn } from '@/lib/utils';

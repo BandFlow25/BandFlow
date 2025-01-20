@@ -1,17 +1,16 @@
-// components/songs/PlayBook/PlayBookList.tsx
+//src\components\songs\PlayBook\index.tsx
 import { useMemo, useState } from 'react';
 import { useSongs } from '@/contexts/SongProvider';
-import { Plus } from 'lucide-react';
-import { SearchHeader } from 'src/components/songs/Shared/SearchHeader';
-import { PlayBookSongCard } from 'src/components/songs/SongCard/PlayBookSongCard';
-import CreateSetlistModal from '../SetLists/CreateSetlistModal';
 import { Button } from '@/components/ui/button';
+import { PlayBookSongCard } from '@/components/songs/SongCard/PlayBookSongCard';
+import  CreateSetlistModal  from '@/components/songs/Modals/CreateSetlistModal';
+import type { BandSong } from '@/lib/types/song';
 import { Loader2 } from 'lucide-react';
 
 export function PlayBookList() {
   const { songs, isLoading, error } = useSongs();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSongs, setSelectedSongs] = useState<any[]>([]);
+  const [selectedSongs, setSelectedSongs] = useState<BandSong[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -21,16 +20,17 @@ export function PlayBookList() {
     if (searchQuery) {
       const search = searchQuery.toLowerCase();
       filtered = filtered.filter(song =>
-        song.title.toLowerCase().includes(search)
+        song.title.toLowerCase().includes(search) ||
+        song.artist.toLowerCase().includes(search)
       );
     }
 
     return filtered.sort((a, b) => a.title.localeCompare(b.title));
   }, [songs, searchQuery]);
 
-  const handleSongToggle = (song: any) => {
+  const handleSongToggle = (song: BandSong) => {
     setSelectedSongs(prev => {
-      const index = prev.findIndex(item => item.id === song.id);
+      const index = prev.findIndex(s => s.id === song.id);
       if (index > -1) {
         const next = [...prev];
         next.splice(index, 1);
@@ -41,56 +41,63 @@ export function PlayBookList() {
   };
 
   return (
-    <div className="flex flex-col">
-      <SearchHeader
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        placeholder="Search Play Book..."
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
-              className={isMultiSelectMode 
-                ? 'border-orange-500 text-orange-500 hover:bg-orange-500/10'
-                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'
-              }
-            >
-              {isMultiSelectMode ? 'Cancel Selection' : 'Select Multiple'}
-            </Button>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* no Header */}
+      <div className="flex-none px-4 pt-4 pb-2 space-y-4 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800">
+        
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Search Play Book..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-gray-800 border-gray-700 rounded-lg px-4 py-2"
+        />
 
-            {isMultiSelectMode && selectedSongs.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setSelectedSongs(
-                  selectedSongs.length === playBookSongs.length ? [] : playBookSongs
-                )}
-                className="text-gray-400 hover:text-gray-300"
-              >
-                {selectedSongs.length === playBookSongs.length ? 'Deselect All' : 'Select All'}
-              </Button>
-            )}
-          </div>
-
-          {selectedSongs.length > 0 && (
-            <div className="flex items-center gap-4">
-              <span className="text-gray-400">
+        {/* Mobile-optimized Selection Controls */}
+        {isMultiSelectMode && (
+          <div className="flex items-center justify-between bg-orange-500/10 rounded-lg p-2">
+            <div className="flex items-center gap-2">
+              <span className="text-orange-500 font-medium">
                 {selectedSongs.length} selected
               </span>
               <Button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-orange-500 hover:bg-orange-400"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedSongs([]);
+                  setIsMultiSelectMode(false);
+                }}
+                className="border-orange-500 text-orange-500"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Setlist
+                Cancel
               </Button>
             </div>
-          )}
-        </div>
-      </SearchHeader>
+            {selectedSongs.length > 0 && (
+              <Button
+                size="sm"
+                onClick={() => setShowCreateModal(true)}
+                className="bg-orange-500"
+              >
+                Create Setlist
+              </Button>
+            )}
+          </div>
+        )}
 
-      <div className="flex-1 overflow-y-auto px-4">
+        {!isMultiSelectMode && (
+          <Button
+            variant="outline"
+            onClick={() => setIsMultiSelectMode(true)}
+            className="w-full border-gray-600 text-gray-400 hover:bg-gray-800"
+          >
+            Select Songs
+          </Button>
+        )}
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
@@ -104,13 +111,14 @@ export function PlayBookList() {
             <span className="text-gray-400">No songs in the Play Book</span>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1 px-4 py-2">
             {playBookSongs.map((song) => (
               <PlayBookSongCard
                 key={song.id}
                 song={song}
                 isSelected={selectedSongs.some(s => s.id === song.id)}
                 onSelect={() => handleSongToggle(song)}
+                selectionOrder={selectedSongs.findIndex(s => s.id === song.id)}
                 isSelectionMode={isMultiSelectMode}
               />
             ))}
@@ -118,6 +126,7 @@ export function PlayBookList() {
         )}
       </div>
 
+      {/* Create Setlist Modal */}
       {showCreateModal && (
         <CreateSetlistModal
           onClose={() => {

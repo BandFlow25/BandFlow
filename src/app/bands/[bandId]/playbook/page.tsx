@@ -33,7 +33,7 @@ export default function PlayBookPage() {
   return (
     <SongsProvider>
       <PageLayout 
-        title="Play Book"
+        title="Play Book / Repertoire"
         count={playBookCount}
         pageType="songs"
       >
