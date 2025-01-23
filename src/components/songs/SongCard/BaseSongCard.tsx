@@ -110,8 +110,16 @@ export function BaseSongCard({
     switch (song.status) {
       case SONG_STATUS.PRACTICE:
         return `border-t-2 ${STATUS_COLORS.PRACTICE.border} ${STATUS_COLORS.PRACTICE.bgFaded}`;
-      case SONG_STATUS.SUGGESTED:
-        return `border-t-2 ${STATUS_COLORS.SUGGESTED.border} ${STATUS_COLORS.SUGGESTED.bgFaded}`;
+        case SONG_STATUS.SUGGESTED:
+          return `border-t-2 ${
+            needsUserAction 
+              ? STATUS_COLORS.SUGGESTED.border // Orange for needs action
+              : 'border-blue-500'  // Blue for voting in progress
+          } ${
+            needsUserAction 
+              ? STATUS_COLORS.SUGGESTED.bgFaded  // Orange bg for needs action
+              : 'bg-blue-500/10'   // Blue bg for voting in progress
+          }`;
       case SONG_STATUS.REVIEW:
         return `border-t-2 ${STATUS_COLORS.REVIEW.border} ${STATUS_COLORS.REVIEW.bgFaded}`;
       case SONG_STATUS.PARKED:

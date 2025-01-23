@@ -22,15 +22,14 @@ export const ROUTES = {
   PROFILE: '/bands/settings/profile',
 } as const;
 
+// src/lib/constants/index.ts
 export const COLLECTIONS = {
   USERS: 'bf_users',
   BANDS: 'bf_bands',
   BASE_SONGS: 'bf_base_songs',
   // Subcollections under BANDS
-  BAND_SONGS: 'songs',      // bf_bands/{bandId}/songs
-  BAND_MEMBERS: 'members',  // bf_bands/{bandId}/members
-  SETLISTS: 'setlists',    // bf_bands/{bandId}/setlists
-
-  //BAND_SONGS was previously bf_band_songs - queried with both bandid & songid
-  //BAND_MEMBERS was previously bf_band_members
+  BAND_SONGS: 'songs',
+  BAND_MEMBERS: 'members',
+  SETLISTS: 'setlists',
+  BAND_INVITES: 'invites',  // Add this new subcollection
 } as const;

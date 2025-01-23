@@ -1,4 +1,3 @@
-// src/contexts/BandProvider.tsx
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -23,10 +22,10 @@ interface BandState {
 }
 
 interface BandContextType extends BandState {
-  // Actions
   selectBand: (bandId: string) => Promise<void>;
   clearActiveBand: () => void;
   refreshBands: () => Promise<void>;
+  isReady: boolean;
 }
 
 const BandContext = createContext<BandContextType | undefined>(undefined);
@@ -36,9 +35,8 @@ const PROTECTED_ROUTES = ['/bands/[bandId]'];
 export function BandProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, profile, requireProfile } = useAuth();
   
-  // State
   const [state, setState] = useState<BandState>({
     availableBands: [],
     isLoadingBands: true,
@@ -49,10 +47,17 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
     error: null,
   });
 
+  const isProtectedRoute = pathname ? PROTECTED_ROUTES.some(route => 
+    pathname.startsWith(route.replace('[bandId]', ''))
+  ) : false;
+
+  // Computed ready state
+  const isReady = !state.isLoadingBands && 
+    (!isProtectedRoute || (isProtectedRoute && state.isActiveBandLoaded));
+
   // Load available bands
   const loadBands = useCallback(async () => {
     if (!user) {
-      console.log('No user, clearing band state');
       setState(prev => ({
         ...prev,
         availableBands: [],
@@ -66,11 +71,8 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('Loading bands for user:', user.uid);
       setState(prev => ({ ...prev, isLoadingBands: true, error: null }));
-      
       const userBands = await getUserBands(user.uid);
-      console.log('Loaded bands:', userBands.length);
       
       setState(prev => ({
         ...prev,
@@ -89,8 +91,11 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
 
   // Select active band
   const selectBand = useCallback(async (bandId: string) => {
-    console.log('Selecting band:', bandId);
     if (!user) return;
+
+    if (!requireProfile()) {
+      return;
+    }
 
     try {
       setState(prev => ({ ...prev, isActiveBandLoaded: false, error: null }));
@@ -102,7 +107,6 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
 
       const role = await getBandMemberRole(bandId, user.uid);
       const members = await getBandMembers(bandId);
-      console.log('Got band and role:', { bandId: band.id, role, memberCount: members.length });
       
       setState(prev => ({
         ...prev,
@@ -123,8 +127,9 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
         memberCount: 0,
         error: 'Failed to select band'
       }));
+      throw err;
     }
-  }, [user]);
+  }, [user, requireProfile]);
 
   const clearActiveBand = useCallback(() => {
     setState(prev => ({
@@ -139,43 +144,50 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
 
   // Initial load of bands
   useEffect(() => {
-    loadBands();
-  }, [loadBands]);
-
-  // Route protection
-  useEffect(() => {
-    if (!pathname) return;
-
-    const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
-    if (!isProtectedRoute) return;
-
-    // If on a protected route but no active band
-    if (isProtectedRoute && !state.activeBand && !state.isLoadingBands) {
-      console.log('Protected route accessed without active band, redirecting');
-      router.push('/home');
+    if (user) {
+      loadBands();
     }
-  }, [pathname, state.activeBand, state.isLoadingBands, router]);
+  }, [loadBands, user]);
 
-  // Restore last active band
+  // Route protection and band restoration
   useEffect(() => {
-    const lastActiveBandId = localStorage.getItem('lastActiveBandId');
-    if (lastActiveBandId && !state.activeBand && !state.isLoadingBands) {
-      // Verify the band exists in available bands before selecting
-      const bandExists = state.availableBands.some(band => band.id === lastActiveBandId);
-      if (bandExists) {
-        selectBand(lastActiveBandId);
-      } else {
-        localStorage.removeItem('lastActiveBandId');
+    if (!isProtectedRoute || state.isLoadingBands) return;
+
+    const handleProtectedRoute = async () => {
+      if (!state.activeBand) {
+        const lastActiveBandId = localStorage.getItem('lastActiveBandId');
+        if (lastActiveBandId && state.availableBands.some(band => band.id === lastActiveBandId)) {
+          try {
+            await selectBand(lastActiveBandId);
+          } catch (error) {
+            console.error('Failed to restore band:', error);
+            router.push('/home');
+          }
+        } else {
+          router.push('/home');
+        }
       }
-    }
-  }, [state.availableBands, state.activeBand, state.isLoadingBands, selectBand]);
+    };
+
+    handleProtectedRoute();
+  }, [pathname, state.activeBand, state.isLoadingBands, state.availableBands, router, selectBand, isProtectedRoute]);
 
   const value = {
     ...state,
     selectBand,
     clearActiveBand,
-    refreshBands: loadBands
+    refreshBands: loadBands,
+    isReady
   };
+
+  // Only show loading state for protected routes
+  if (!isReady && isProtectedRoute) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <BandContext.Provider value={value}>

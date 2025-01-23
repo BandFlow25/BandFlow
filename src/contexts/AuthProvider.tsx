@@ -1,9 +1,22 @@
+// src/contexts/AuthProvider.tsx
 'use client';
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User, signInWithEmailAndPassword } from "firebase/auth";
+import { 
+  onAuthStateChanged, 
+  User, 
+  setPersistence, 
+  browserSessionPersistence, 
+  browserLocalPersistence 
+} from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
-import { createUserProfile, getUserProfile, UserProfile } from "@/lib/services/firebase/auth";
+import { 
+  createUserProfile, 
+  getUserProfile, 
+  UserProfile,
+  signInWithEmail,
+  signOut 
+} from "@/lib/services/firebase/auth";
 import { useRouter } from 'next/navigation';
 
 export interface AuthContextType {
@@ -11,10 +24,10 @@ export interface AuthContextType {
   profile: UserProfile | null;
   isLoading: boolean;
   setProfile: (profile: UserProfile | null) => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   requireProfile: () => boolean;
-  validateProfile: () => boolean;
+  validateProfile: (force?: boolean) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,15 +36,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
 
-  const validateProfile = (): boolean => {
+  // Profile validation with force option
+  const validateProfile = (force: boolean = false): boolean => {
     if (!user) {
       router.push('/login');
       return false;
     }
 
-    if (!profile?.hasProfile) {
+    // Only force redirect to profile setup if explicitly required
+    if (!profile?.hasProfile && force) {
       router.push('/profile-setup');
       return false;
     }
@@ -39,88 +55,113 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  // Used when profile is required (e.g., accessing band features)
   const requireProfile = (): boolean => {
-    return validateProfile();
+    return validateProfile(true);
   };
 
-  const login = async (email: string, password: string): Promise<void> => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    setUser(user);
+  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<void> => {
+    try {
+      // Set persistence based on remember me choice
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
+      const user = await signInWithEmail(email, password);
+      setUser(user);
 
-    const userProfile = await getUserProfile(user.uid);
-    setProfile({
-      uid: user.uid,
-      email: user.email || '',
-      hasProfile: userProfile?.hasProfile ?? false,
-      displayName: userProfile?.displayName || '',
-      fullName: userProfile?.fullName || '',
-      postcode: userProfile?.postcode || '',
-      instruments: userProfile?.instruments || [],
-      avatar: userProfile?.avatar || '',
-      firstName: userProfile?.firstName || '',
-      lastName: userProfile?.lastName || '',
-      createdAt: userProfile?.createdAt || new Date(),
-      updatedAt: userProfile?.updatedAt || new Date(),
-    });
+      const userProfile = await getUserProfile(user.uid);
+      if (userProfile) {
+        setProfile(userProfile);
+        
+        // Redirect based on profile status
+        if (!userProfile.hasProfile) {
+          router.push('/profile-setup');
+        } else {
+          router.push('/home');
+        }
+      } else {
+        // Create default profile if none exists
+        const defaultProfile = {
+          uid: user.uid,
+          email: user.email || '',
+          hasProfile: false,
+          displayName: '',
+          fullName: '',
+          postcode: '',
+          instruments: [],
+          firstName: '',
+          lastName: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        await createUserProfile(user, defaultProfile);
+        setProfile(defaultProfile);
+        router.push('/profile-setup');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await auth.signOut();
-    setUser(null);
-    setProfile(null);
+    try {
+      await signOut();
+      setUser(null);
+      setProfile(null);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
+  // Auth state observer
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoading(true);
-      setUser(user);
-
-      if (user) {
-        const userProfile = await getUserProfile(user.uid);
-
-        if (userProfile) {
-          setProfile({
-            uid: user.uid,
-            email: user.email || '',
-            hasProfile: userProfile.hasProfile ?? false,
-            displayName: userProfile.displayName || '',
-            fullName: userProfile.fullName || '',
-            postcode: userProfile.postcode || '',
-            instruments: userProfile.instruments || [],
-            avatar: userProfile.avatar || '',
-            firstName: userProfile.firstName || '',
-            lastName: userProfile.lastName || '',
-            createdAt: userProfile.createdAt || new Date(),
-            updatedAt: userProfile.updatedAt || new Date(),
-          });
+      try {
+        if (user) {
+          setUser(user);
+          const userProfile = await getUserProfile(user.uid);
+          
+          if (userProfile) {
+            setProfile(userProfile);
+          } else {
+            const defaultProfile = {
+              uid: user.uid,
+              email: user.email || '',
+              hasProfile: false,
+              displayName: '',
+              fullName: '',
+              postcode: '',
+              instruments: [],
+              firstName: '',
+              lastName: '',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            await createUserProfile(user, defaultProfile);
+            setProfile(defaultProfile);
+          }
         } else {
-          // Create a default profile if it doesn't exist
-          await createUserProfile(user, { hasProfile: false });
-          setProfile({
-            uid: user.uid,
-            email: user.email || '',
-            hasProfile: false,
-            displayName: '',
-            fullName: '',
-            postcode: '',
-            instruments: [],
-            avatar: '',
-            firstName: '',
-            lastName: '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
+          setUser(null);
+          setProfile(null);
         }
-      } else {
-        setProfile(null);
+      } catch (error) {
+        console.error('Auth state observer error:', error);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
       }
-
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Don't render children until initial auth check is complete
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider

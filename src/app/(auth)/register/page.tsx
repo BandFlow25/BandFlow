@@ -16,35 +16,35 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // In your register page
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
+  
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
+  
     setIsLoading(true);
-
+  
     try {
+      // Register user
       await registerWithEmail(email, password);
+      
+      // Always go to profile setup after registration
+      // The profile setup page will handle the invite processing
       router.push('/profile-setup');
     } catch (error) {
       if (error instanceof Error) {
-      setError(error.message);
+        setError(error.message);
       } else {
-      setError('An unexpected error occurred');
+        setError('An unexpected error occurred');
       }
     } finally {
       setIsLoading(false);
     }
-    };
+  };
 
   const togglePasswordVisibility = () => {
     setShowPassword(prev => !prev);

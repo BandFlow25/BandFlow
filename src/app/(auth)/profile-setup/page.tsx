@@ -95,41 +95,44 @@ export default function ProfileSetup() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-  
-    if (!validateForm()) {
-      setError('Please fill in all required fields');
-      return;
+ // In your profile-setup page's submit handler
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!user) return;
+
+  setIsSaving(true);
+  setError('');
+
+  try {
+    await createUserProfile(user, {
+      displayName: formData.displayName,
+      fullName: formData.fullName,
+      postcode: formData.postcode,
+      instruments: selectedInstruments,
+      avatar: formData.avatar,
+      hasProfile: true,
+    });
+
+    // Get and update profile state
+    const refreshedProfile = await getUserProfile(user.uid);
+    if (refreshedProfile) {
+      setProfile(refreshedProfile);
     }
-  
-    setIsSaving(true);
-    setError('');
-  
-    try {
-      await createUserProfile(user, {
-        displayName: formData.displayName,
-        fullName: formData.fullName,
-        postcode: formData.postcode,
-        instruments: selectedInstruments,
-        avatar: formData.avatar,
-        hasProfile: true, // Explicitly set hasProfile to true
-      });
-  
-      // Fetch and update profile state
-      const refreshedProfile = await getUserProfile(user.uid);
-      if (refreshedProfile) {
-        setProfile(refreshedProfile); // Update global state
-      }
-  
-      router.push('/home'); // Redirect to home
-    } catch (error: any) {
-      setError(error.message || 'Failed to update profile');
-    } finally {
-      setIsSaving(false);
+
+    // Check for pending invite
+    const pendingInvite = localStorage.getItem('pendingInvite');
+    if (pendingInvite) {
+      router.push(`/process-invite/${pendingInvite}`);
+    } else {
+      router.push('/home');
     }
-  };
+  } catch (error: any) {
+    setError(error.message || 'Failed to update profile');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

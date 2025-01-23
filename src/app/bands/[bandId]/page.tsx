@@ -8,11 +8,11 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  BookOpen, GitBranch, Calendar, Wrench , ImageIcon
+  BookOpen, GitBranch, Calendar, Wrench, ImageIcon
 } from 'lucide-react';
 
 export default function BandPage() {
-  const { activeBand, isActiveBandLoaded, error } = useBand();
+  const { activeBand, isReady, error } = useBand();
   const params = useParams();
   const [songCounts, setSongCounts] = useState({
     total: 0,
@@ -36,14 +36,8 @@ export default function BandPage() {
     loadSongCounts();
   }, [activeBand?.id]);
 
-  console.log('BandPage Initial Render:', {
-    bandId: params?.bandId,
-    activeBand: activeBand?.id,
-    isLoaded: isActiveBandLoaded
-  });
-
-  if (!isActiveBandLoaded) {
-    console.log('BandPage showing loading state');
+  // Single loading check using isReady
+  if (!isReady) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading band...</div>
@@ -52,7 +46,6 @@ export default function BandPage() {
   }
 
   if (error) {
-    console.log('BandPage showing error state:', error);
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-xl text-red-500">{error}</div>
@@ -61,18 +54,12 @@ export default function BandPage() {
   }
 
   if (!activeBand) {
-    console.log('BandPage showing no active band state');
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-xl">Band not found</div>
       </div>
     );
   }
-
-  console.log('BandPage rendering dashboard for band:', {
-    bandId: activeBand.id,
-    bandName: activeBand.name
-  });
 
   const sections = [
     {
@@ -84,8 +71,6 @@ export default function BandPage() {
       color: "bg-blue-500",
       primary: true
     },
-
-    
     {
       title: "Song Pipeline",
       description: "Songs being worked on by the band",
@@ -113,17 +98,15 @@ export default function BandPage() {
         </div>
       )
     },
-
     {
       title: `Practice List`,
       description: "Manage songs that you are practicing & getting gig ready",
-      icon: <Wrench    className="w-6 h-6" />,
+      icon: <Wrench className="w-6 h-6" />,
       href: `/bands/${activeBand.id}/songs?view=practice`,
       count: songCounts.practice > 0 ? `${songCounts.practice} songs` : null,
       color: "bg-yellow-400",
       primary: true
     },
-    
     {
       title: "Events",
       description: "Manage gigs, rehearsals and setlist planning",
@@ -139,9 +122,6 @@ export default function BandPage() {
       color: "bg-green-500"
     }
   ];
-
-
-
   
   return (
     <PageLayout title={`Welcome to ${activeBand.name}`}>

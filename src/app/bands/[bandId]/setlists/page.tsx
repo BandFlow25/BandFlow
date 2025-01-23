@@ -1,4 +1,3 @@
-// src/app/bands/[bandId]/setlists/page.tsx
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -12,70 +11,64 @@ import { COLLECTIONS } from '@/lib/constants';
 import type { Setlist } from '@/lib/types/setlist';
 import CreateSetlistModal from '@/components/songs/Modals/CreateSetlistModal';
 import { Button } from '@/components/ui/button';
-import { SearchHeader } from 'src/components/songs/Shared/SearchHeader';
+import { SearchHeader } from '@/components/songs/Shared/SearchHeader';
 import { cn } from '@/lib/utils';
 import { SetlistProvider } from '@/contexts/SetlistProvider';
-import { PageTitleHeader } from '@/components/layout/PageTitleHeader';
 
-// Simplified interface for overview
+
+// Types
 interface SetlistOverview extends Setlist {
   id: string;
   hasNonPlaybookSongs?: boolean;
 }
 
-// Type for sort options
 type SortOption = 'created' | 'duration' | 'sets';
 
 function SetlistsPageContent() {
   const router = useRouter();
-  const { activeBand, isActiveBandLoaded } = useBand();
+  const { activeBand, isReady } = useBand();
   
+  // State management
   const [setlists, setSetlists] = useState<SetlistOverview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('created');
   const [groupBySets, setGroupBySets] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Fetch setlists
   useEffect(() => {
     if (!activeBand?.id) return;
 
-    console.log('Setting up setlists listener for band:', activeBand.id);
     setIsLoading(true);
     setError(null);
 
     const setlistsRef = collection(db, COLLECTIONS.BANDS, activeBand.id, COLLECTIONS.SETLISTS);
-    const setlistsQuery = query(
-      setlistsRef,
-      orderBy('createdAt', 'desc')
-    );
+    const setlistsQuery = query(setlistsRef, orderBy('createdAt', 'desc'));
 
-    const unsubscribe = onSnapshot(setlistsQuery, 
+    const unsubscribe = onSnapshot(
+      setlistsQuery, 
       (snapshot) => {
-        console.log('Received setlists update');
         const setlistData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           hasNonPlaybookSongs: false
         })) as SetlistOverview[];
-
+        
         setSetlists(setlistData);
         setIsLoading(false);
       },
       (error) => {
-        console.error('Setlists subscription error:', error);
         setError('Failed to load setlists');
         setIsLoading(false);
       }
     );
 
-    return () => {
-      console.log('Cleaning up setlists listener');
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [activeBand?.id]);
 
+  // Memoized filtered and sorted setlists
   const organizedSetlists = useMemo(() => {
     let filtered = setlists;
 
@@ -108,33 +101,30 @@ function SetlistsPageContent() {
     return { 'All Setlists': filtered };
   }, [setlists, searchQuery, sortBy, groupBySets]);
 
-  if (!isActiveBandLoaded || isLoading) {
+  // Loading state
+  if (!isReady || isLoading) {
     return (
-      <>
-        <PageTitleHeader title="Setlists" count={0} />
+      <PageLayout title="Setlists">
         <div className="flex items-center justify-center h-64">
           <div className="text-white">Loading setlists...</div>
         </div>
-      </>
+      </PageLayout>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <>
-        <PageTitleHeader title="Setlists" count={0} />
-        <div className="text-red-500">{error}</div>
-      </>
+      <PageLayout title="Setlists">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-red-500">{error}</div>
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <>
-      <PageTitleHeader 
-        title="Setlists" 
-        count={setlists.length} 
-       
-      />
+    <PageLayout title="Setlists">
       <div className="flex flex-col h-[calc(100vh-120px)]">
         <SearchHeader
           searchQuery={searchQuery}
@@ -232,16 +222,14 @@ function SetlistsPageContent() {
           />
         )}
       </div>
-    </>
+    </PageLayout>
   );
 }
 
 export default function SetlistsPage() {
   return (
-    <PageLayout title="Setlists">
-      <SetlistProvider>
-        <SetlistsPageContent />
-      </SetlistProvider>
-    </PageLayout>
+    <SetlistProvider>
+      <SetlistsPageContent />
+    </SetlistProvider>
   );
 }

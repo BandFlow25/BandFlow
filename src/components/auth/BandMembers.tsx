@@ -1,129 +1,116 @@
-//src/components/auth/BandMembers.tsx
-import React, { useState, useEffect } from 'react';
-import { getUserProfile, type UserProfile } from '@/lib/services/firebase/auth';
-import { getBandMembers, addBandMember, updateBandMember, removeBandMember } from '@/lib/services/firebase/bands';
-import type { BandMember } from '@/lib/types/band';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/config/firebase';
-import { Share2, UserPlus, AlertTriangle } from 'lucide-react';
-import { COLLECTIONS } from '@/lib/constants';
+import React, { useEffect, useState } from 'react';
+import { getBandMembers, updateBandMember, removeBandMember, getOrCreateBandInvite, toggleBandInvite, regenerateBandInvite } from '@/lib/services/firebase/bands';
+import type { BandMember, BandInvite } from '@/lib/types/band';
+import { RefreshCw, Share, Power, UserX, UserCog, Check, Copy } from 'lucide-react';
+import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 interface BandMembersProps {
   bandId: string;
   currentUserId: string;
 }
 
-interface ExtendedBandMember extends BandMember {
-  userProfile: UserProfile | null;
-}
-
-const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
-  const [members, setMembers] = useState<ExtendedBandMember[]>([]);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function BandMembers({ bandId, currentUserId }: BandMembersProps) {
+  const [members, setMembers] = useState<BandMember[]>([]);
+  const [invite, setInvite] = useState<BandInvite | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
 
-  // Load band members and their profiles
   useEffect(() => {
-    const loadMembers = async () => {
-      try {
-        const bandMembers = await getBandMembers(bandId);
-        const extendedMembers = await Promise.all(
-          bandMembers.map(async (member) => {
-            const profile = await getUserProfile(member.userId);
-            return { ...member, userProfile: profile };
-          })
-        );
-        setMembers(extendedMembers);
-      } catch (err) {
-        console.error('Error loading members:', err);
-        setError('Failed to load band members');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadMembers();
+    loadData();
   }, [bandId]);
 
-  // Load all users (DEV ONLY)
-  const loadAllUsers = async () => {
+  const loadData = async () => {
     try {
-      const usersRef = collection(db, COLLECTIONS.USERS);
-      const usersSnap = await getDocs(usersRef);
-      const users = usersSnap.docs.map(doc => ({
-        ...doc.data(),
-        uid: doc.id
-      }) as UserProfile);
-      // Filter out users who are already members
-      setAllUsers(users.filter(user => !members.some(member => member.userId === user.uid)));
+      const [membersData, inviteData] = await Promise.all([
+        getBandMembers(bandId),
+        getOrCreateBandInvite(bandId)
+      ]);
+      setMembers(membersData);
+      setInvite(inviteData);
     } catch (err) {
-      console.error('Error loading users:', err);
-      setError('Failed to load users');
+      console.error('Error loading data:', err);
+      setError('Failed to load band data');
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleUserSelect = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
+
+  const copyInviteLink = async () => {
+    if (!invite) return;
+    
+    const inviteLink = `${window.location.origin}/join/${invite.inviteCode}`;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setJustCopied(true);
+      toast.success('Invite link copied to clipboard');
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const shareToWhatsApp = () => {
+    if (!invite) return;
+    const inviteLink = `${window.location.origin}/join/${invite.inviteCode}`;
+    const message = encodeURIComponent(
+      `Join my band on BandFlow25!\n\n${inviteLink}`
     );
+    window.open(`https://wa.me/?text=${message}`, '_blank');
   };
-  const handleAddMembers = async () => {
+
+  const handleRoleUpdate = async (userId: string, newRole: 'admin' | 'member') => {
     try {
-      setError('');
-      await Promise.all(
-        selectedUsers.map(userId =>
-          addBandMember(bandId, userId, 'member')
-        )
-      );
-      // Refresh member list
-      const bandMembers = await getBandMembers(bandId);
-      const extendedMembers = await Promise.all(
-        bandMembers.map(async (member) => {
-          const profile = await getUserProfile(member.userId);
-          return { ...member, userProfile: profile };
-        })
-      );
-      setMembers(extendedMembers);
-      setSelectedUsers([]);
-      setIsSelectOpen(false);
-    } catch (err) {
-      console.error('Error adding members:', err);
-      setError('Failed to add members');
-    }
-  };
-  const toggleMemberRole = async (userId: string, currentRole: string) => {
-    try {
-      const newRole = currentRole === 'admin' ? 'member' : 'admin';
       await updateBandMember(bandId, userId, newRole);
-      setMembers(members.map(member =>
-        member.userId === userId ? { ...member, role: newRole } : member
-      ));
+      await loadData();
     } catch (err) {
-      console.error('Error updating member role:', err);
+      console.error('Error updating role:', err);
       setError('Failed to update member role');
     }
   };
-  const removeMember = async (userId: string) => {
-    try {
-      await removeBandMember(bandId, userId);
-      setMembers(members.filter(member => member.userId !== userId));
-    } catch (err) {
-      console.error('Error removing member:', err);
-      setError('Failed to remove member');
-    }
-  }; 
 
-  if (isLoading) {
-    return <div className="text-gray-400">Loading members...</div>;
+  const handleRemoveMember = async (userId: string) => {
+    if (window.confirm('Are you sure you want to remove this member?')) {
+      try {
+        await removeBandMember(bandId, userId);
+        await loadData();
+      } catch (err) {
+        console.error('Error removing member:', err);
+        setError('Failed to remove member');
+      }
+    }
+  };
+
+  const handleToggleInvite = async () => {
+    if (!invite) return;
+    try {
+      await toggleBandInvite(bandId, invite.inviteCode, !invite.isActive);
+      await loadData();
+    } catch (err) {
+      console.error('Error toggling invite:', err);
+      setError('Failed to toggle invite status');
+    }
+  };
+
+  const handleRegenerateInvite = async () => {
+    if (!window.confirm('Are you sure? This will invalidate the current invite link.')) return;
+    try {
+      const newInvite = await regenerateBandInvite(bandId);
+      setInvite(newInvite);
+      toast.success('New invite link generated');
+    } catch (err) {
+      console.error('Error regenerating invite:', err);
+      setError('Failed to regenerate invite');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white">Loading...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {error && (
         <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg">
           {error}
@@ -131,98 +118,122 @@ const BandMembers = ({ bandId, currentUserId }: BandMembersProps) => {
       )}
 
       {/* Current Members List */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-white">Current Members</h3>
-        <div className="divide-y divide-gray-700">
+      <div>
+        <h3 className="text-lg font-medium text-white mb-4">Current Members</h3>
+        <div className="space-y-2">
           {members.map((member) => (
-            <div key={member.userId} className="py-3 flex items-center justify-between">
+            <div
+              key={member.userId}
+              className="flex items-center justify-between bg-gray-800 p-3 rounded-lg"
+            >
               <div>
-                <p className="text-white">{member.userProfile?.fullName || 'Unknown User'}</p>
-                <p className="text-sm text-gray-400">
-                  {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                </p>
+                <p className="text-white">{member.displayName}</p>
+                <p className="text-sm text-gray-400">{member.instruments.join(', ')}</p>
               </div>
-              {currentUserId !== member.userId && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleMemberRole(member.userId, member.role)}
-                    className="text-sm px-2 py-1 rounded-md bg-gray-700 text-white hover:bg-gray-600"
-                  >
-                    {member.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                  </button>
-                  <button
-                    onClick={() => removeMember(member.userId)}
-                    className="text-sm px-2 py-1 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {member.userId !== currentUserId && (
+                  <>
+                    <button
+                      onClick={() => handleRoleUpdate(member.userId, member.role === 'admin' ? 'member' : 'admin')}
+                      className="p-2 text-gray-400 hover:text-white"
+                      title={`Make ${member.role === 'admin' ? 'Member' : 'Admin'}`}
+                    >
+                      <UserCog className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleRemoveMember(member.userId)}
+                      className="p-2 text-gray-400 hover:text-red-500"
+                      title="Remove Member"
+                    >
+                      <UserX className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+                <span className="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
+                  {member.role}
+                </span>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Invite Section */}
-      <div className="border border-gray-700 rounded-lg p-4">
-        <h3 className="text-lg font-medium text-white mb-4">Invite Members</h3>
-        <button
-          className="inline-flex items-center px-4 py-2 rounded-md bg-gray-700 text-white hover:bg-gray-600"
-        >
-          <Share2 className="w-4 h-4 mr-2" />
-          Share Invite Link
-          <span className="ml-2 text-xs bg-gray-600 px-2 py-1 rounded">Coming Soon</span>
-        </button>
-      </div>
-
-      {/* DEV ONLY: Select Users Section */}
-      <div className="border border-red-500/50 rounded-lg p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <AlertTriangle className="w-5 h-5 text-red-500" />
-          <h3 className="text-lg font-medium text-red-500">Development Only: Add Users</h3>
-        </div>
-        <button
-          onClick={() => {
-            setIsSelectOpen(!isSelectOpen);
-            if (!isSelectOpen) loadAllUsers();
-          }}
-          className="inline-flex items-center px-4 py-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Select Users to Add
-        </button>
-
-        {isSelectOpen && (
-          <div className="mt-4 space-y-4">
-            <div className="max-h-60 overflow-y-auto space-y-2">
-              {allUsers.map((user) => (
-                <label
-                  key={user.uid}
-                  className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.includes(user.uid)}
-                    onChange={() => handleUserSelect(user.uid)}
-                    className="rounded border-gray-600"
-                  />
-                  <span className="text-white">{user.fullName}</span>
-                </label>
-              ))}
-            </div>
-            {selectedUsers.length > 0 && (
+      {/* Band Invite Section */}
+      {invite && (
+        <div className="bg-gray-800 p-4 rounded-lg space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium text-white">Band Invite</h3>
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleAddMembers}
-                className="w-full px-4 py-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                onClick={handleToggleInvite}
+                className={`p-2 rounded-lg ${
+                  invite.isActive ? 'text-green-500' : 'text-gray-500'
+                }`}
+                title={invite.isActive ? 'Deactivate Invite' : 'Activate Invite'}
               >
-                Add Selected Users ({selectedUsers.length})
+                <Power className="w-5 h-5" />
               </button>
-            )}
+              <button
+                onClick={handleRegenerateInvite}
+                className="p-2 text-gray-400 hover:text-white"
+                title="Regenerate Invite"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={copyInviteLink}
+              className="flex-1 bg-gray-700 p-3 rounded-lg text-sm text-left text-white hover:bg-gray-600 transition-colors relative group"
+            >
+              {`${window.location.origin}/join/${invite.inviteCode}`}
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                {justCopied ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4 text-gray-400 group-hover:text-white" />
+                )}
+              </span>
+            </button>
+            <button
+              onClick={shareToWhatsApp}
+              className="bg-[#25D366] hover:bg-[#128C7E] text-white p-3 rounded-lg transition-colors"
+              title="Share via WhatsApp"
+            >
+              <Share className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Invite Usage History */}
+          {invite.uses.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-gray-300 mb-2">Usage History</h4>
+              <div className="bg-gray-900 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-2 text-left text-gray-400 bg-gray-800">User</th>
+                      <th className="px-4 py-2 text-left text-gray-400 bg-gray-800">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invite.uses.map((use) => (
+                      <tr key={use.userId} className="border-t border-gray-800">
+                        <td className="px-4 py-2 text-white">{use.displayName}</td>
+                        <td className="px-4 py-2 text-gray-400">
+                          {format(use.joinedAt.toDate(), 'PP')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-};
-
-export default BandMembers;
+}

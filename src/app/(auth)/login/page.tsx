@@ -1,3 +1,4 @@
+//src\app\(auth)\login\page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -31,10 +32,10 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
+  
     try {
-      await login(email, password);
-      router.push('/home');
+      await login(email, password, rememberMe);
+      // Router push is now handled in the AuthProvider
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message || 'An error occurred during login.');

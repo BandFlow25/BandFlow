@@ -7,17 +7,17 @@ import { useRouter } from 'next/navigation';
 import { Settings, Plus, Music } from 'lucide-react';
 import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
+import type { Band } from '@/lib/types/band';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, profile, validateProfile, logout } = useAuth();
-  const { 
-    availableBands, 
-    isLoadingBands, 
-    selectBand, 
+  const {
+    availableBands,
+    isLoadingBands,
+    selectBand,
     error,
-    activeBand,
-    clearActiveBand 
+    clearActiveBand
   } = useBand();
 
   // Check profile first
@@ -117,19 +117,34 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {availableBands.map((band) => (
-            <button
+          {availableBands.map((band: Band & { userRole?: string }) => (
+            <div
               key={band.id}
               onClick={() => handleBandSelect(band.id)}
-              className="bg-gray-800 rounded-lg p-4 text-left hover:bg-gray-700 transition-colors"
+              className="bg-gray-800 rounded-lg p-2 text-left hover:bg-gray-700 transition-colors relative group cursor-pointer"
             >
-              <img
-                src={band.imageUrl || '/images/band-placeholder.png'}
-                alt={band.name}
-                className="rounded-md mb-3 w-full h-48 object-cover"
-              />
+              <div className="relative">
+                <img
+                  src={band.imageUrl || '/images/band-placeholder.png'}
+                  alt={band.name}
+                  className="rounded-md mb-3 w-full h-48 object-cover"
+                />
+                {band.userRole === 'admin' && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBandSelect(band.id).then(() => {
+                        router.push(`/bands/${band.id}/settings`);
+                      });
+                    }}
+                    className="absolute top-2 right-2 p-2 rounded-lg transition-colors hover:bg-gray-900/50 cursor-pointer"
+                  >
+                    <Settings className="w-10 h-10 text-blue-500" />
+                  </div>
+                )}
+              </div>
               <h3 className="font-semibold">{band.name}</h3>
-            </button>
+            </div>
           ))}
 
           <Link

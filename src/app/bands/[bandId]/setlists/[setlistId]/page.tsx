@@ -1,13 +1,11 @@
-// app/bands/[bandId]/setlists/[setlistId]/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SetlistProvider } from '@/contexts/SetlistProvider';
+import { SetlistProvider, useSetlist } from '@/contexts/SetlistProvider';
 import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
 import DroppableSet from '@/components/songs/SetLists/DroppableSet';
 import { AddSetlistSongsModal } from '@/components/songs/Modals/AddSetListSongsModal';
-import { useSetlist } from '@/contexts/SetlistProvider';
 import type { BandSong } from '@/lib/types/song';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Clock, ListMusic, Edit2, ChevronLeft } from 'lucide-react';
@@ -37,59 +35,29 @@ async function fetchSongDetails(bandId: string, songId: string): Promise<BandSon
   try {
     const songRef = doc(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_SONGS, songId);
     const songDoc = await getDoc(songRef);
-
+    
     if (!songDoc.exists()) return null;
     return { id: songDoc.id, ...songDoc.data() } as BandSong;
   } catch (error) {
-    console.error('Error fetching song details:', error);
     return null;
   }
 }
 
 function SetlistDetailsPageContent() {
-  const { activeBand, isActiveBandLoaded } = useBand();
+  const { activeBand, isReady } = useBand();
   const { setlist, refreshSetlist, isLoading: isSetlistLoading } = useSetlist();
-  //const router = useRouter();
-
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeSetNumber, setActiveSetNumber] = useState<number | null>(null);
-  const [isLoadingSongs, setIsLoadingSongs] = useState(true);
+  
+  // State
   const [songDetails, setSongDetails] = useState<Record<string, BandSong>>({});
-  const [selectedSetNumber, setSelectedSetNumber] = useState<number | null>(null);
+  const [isLoadingSongs, setIsLoadingSongs] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showAddSongsModal, setShowAddSongsModal] = useState(false);
   const [targetSetNumber, setTargetSetNumber] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeSetNumber, setActiveSetNumber] = useState<number | null>(null);
 
-  useEffect(() => {
-    const loadSongDetails = async () => {
-      if (!setlist || !activeBand?.id) return;
-
-      setIsLoadingSongs(true);
-      try {
-        const details: Record<string, BandSong> = {};
-        await Promise.all(
-          setlist.songs.map(async (song) => {
-            const songDetail = await fetchSongDetails(activeBand.id, song.songId);
-            if (songDetail) {
-              details[song.songId] = songDetail;
-            }
-          })
-        );
-        setSongDetails(details);
-      } catch (error) {
-        console.error('Error loading song details:', error);
-        setError('Failed to load song details');
-      } finally {
-        setIsLoadingSongs(false);
-      }
-    };
-
-    if (setlist && activeBand?.id) {
-      loadSongDetails();
-    }
-  }, [setlist, activeBand?.id]);
-
+  // DnD sensors setup
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -100,26 +68,7 @@ function SetlistDetailsPageContent() {
     })
   );
 
-  if (!isActiveBandLoaded || isSetlistLoading) {
-    return (
-      <PageLayout title="Loading...">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-white">Loading setlist...</div>
-        </div>
-      </PageLayout>
-    );
-  }
-
-  if (!activeBand || !setlist) {
-    return (
-      <PageLayout title="Not Found">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">Setlist not found</div>
-        </div>
-      </PageLayout>
-    );
-  }
-
+  // Handler functions
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setActiveId(active.id as string);
@@ -129,7 +78,7 @@ function SetlistDetailsPageContent() {
   const handleDragOver = async (event: DragOverEvent) => {
     const { active, over } = event;
 
-    if (!over || !active?.data?.current || !setlist) return;
+    if (!over || !active?.data?.current || !setlist || !activeBand?.id) return;
 
     const activeSetNumber = active.data.current.setNumber;
     let overSetNumber: number | undefined;
@@ -143,10 +92,9 @@ function SetlistDetailsPageContent() {
       }
     }
 
-    if (typeof activeSetNumber === 'number' &&
-      typeof overSetNumber === 'number' &&
-      activeSetNumber !== overSetNumber &&
-      activeBand?.id) {
+    if (typeof activeSetNumber === 'number' && 
+        typeof overSetNumber === 'number' && 
+        activeSetNumber !== overSetNumber) {
 
       const targetSetSongs = setlist.songs.filter(s => s.setNumber === overSetNumber);
       const updatedSongs = setlist.songs.map(song => {
@@ -163,8 +111,7 @@ function SetlistDetailsPageContent() {
       try {
         await updateSetlistSongs(activeBand.id, setlist.id, updatedSongs);
         await refreshSetlist();
-      } catch (err) {
-        console.error('Error updating song positions:', err);
+      } catch (error) {
         setError('Failed to update song positions');
       }
     }
@@ -206,27 +153,75 @@ function SetlistDetailsPageContent() {
         }
         return song;
       });
-    }
 
-    try {
-      await updateSetlistSongs(activeBand.id, setlist.id, updatedSongs);
-      await refreshSetlist();
-    } catch (error) {
-      console.error('Error updating song positions:', error);
-      setError('Failed to update song order');
+      try {
+        await updateSetlistSongs(activeBand.id, setlist.id, updatedSongs);
+        await refreshSetlist();
+      } catch (error) {
+        setError('Failed to update song order');
+      }
     }
   };
 
+  // Load song details
+  useEffect(() => {
+    const loadSongDetails = async () => {
+      if (!setlist || !activeBand?.id) return;
+
+      setIsLoadingSongs(true);
+      try {
+        const details: Record<string, BandSong> = {};
+        await Promise.all(
+          setlist.songs.map(async (song) => {
+            const songDetail = await fetchSongDetails(activeBand.id, song.songId);
+            if (songDetail) {
+              details[song.songId] = songDetail;
+            }
+          })
+        );
+        setSongDetails(details);
+      } catch (error) {
+        setError('Failed to load song details');
+      } finally {
+        setIsLoadingSongs(false);
+      }
+    };
+
+    if (setlist && activeBand?.id) {
+      loadSongDetails();
+    }
+  }, [setlist, activeBand?.id]);
+
+  // Loading state
+  if (!isReady || isSetlistLoading || isLoadingSongs) {
+    return (
+      <PageLayout title="Loading...">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-white">Loading setlist...</div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Not found state
+  if (!activeBand || !setlist) {
+    return (
+      <PageLayout title="Not Found">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-red-500">Setlist not found</div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+
   const handleSongRemove = async (songId: string) => {
     if (!setlist || !activeBand?.id) return;
-
     const updatedSongs = setlist.songs.filter(s => s.songId !== songId);
-
     try {
       await updateSetlistSongs(activeBand.id, setlist.id, updatedSongs);
       await refreshSetlist();
     } catch (error) {
-      console.error('Error removing song:', error);
       setError('Failed to remove song');
     }
   };
@@ -239,11 +234,9 @@ function SetlistDetailsPageContent() {
   const handleAddSongs = async (songIds: string[]) => {
     if (!setlist || !activeBand?.id || !targetSetNumber) return;
 
-    // Get current songs in the target set
     const targetSetSongs = setlist.songs.filter(s => s.setNumber === targetSetNumber);
     const startPosition = targetSetSongs.length;
 
-    // Create new song entries
     const newSongs = songIds.map((songId, index) => ({
       songId,
       setNumber: targetSetNumber,
@@ -251,14 +244,12 @@ function SetlistDetailsPageContent() {
       isPlayBookActive: true,
     }));
 
-    // Combine existing songs with new ones
     const updatedSongs = [...setlist.songs, ...newSongs];
 
     try {
       await updateSetlistSongs(activeBand.id, setlist.id, updatedSongs);
       await refreshSetlist();
     } catch (error) {
-      console.error('Error adding songs:', error);
       setError('Failed to add songs');
     }
   };
@@ -266,7 +257,7 @@ function SetlistDetailsPageContent() {
   return (
     <PageLayout title={setlist.name}>
       <div className="h-full flex flex-col overflow-hidden">
-        {/* Header Area - Fixed */}
+        {/* Header Area */}
         <div className="flex-none px-4 py-4 space-y-4 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800">
           <Link
             href={`/bands/${activeBand.id}/setlists`}
@@ -320,18 +311,18 @@ function SetlistDetailsPageContent() {
             }}
           >
             <div className="space-y-6">
-              {Array.from({ length: setlist?.format.numSets || 0 }).map((_, setIndex) => {
+              {Array.from({ length: setlist.format.numSets }).map((_, setIndex) => {
                 const setNumber = setIndex + 1;
-                const setSongs = setlist?.songs
+                const setSongs = setlist.songs
                   .filter((song) => song.setNumber === setNumber)
-                  .sort((a, b) => a.position - b.position) || [];
+                  .sort((a, b) => a.position - b.position);
 
                 const setDurationSeconds = calculateSetDurationInSeconds(
                   setSongs.map(song => songDetails[song.songId]).filter(Boolean)
                 );
                 const durationInfo = getSetDurationInfo(
                   setDurationSeconds,
-                  setlist?.format.setDuration || 45
+                  setlist.format.setDuration
                 );
 
                 return (
@@ -353,8 +344,7 @@ function SetlistDetailsPageContent() {
           </DndContext>
         </div>
 
-
-        {/* Edit SetLIST Modal */}
+        {/* Modals */}
         {showEditModal && setlist && (
           <CreateSetlistModal
             onClose={() => setShowEditModal(false)}
@@ -367,8 +357,7 @@ function SetlistDetailsPageContent() {
           />
         )}
 
-        {/* Add Songs Modal */}
-        {showAddSongsModal && targetSetNumber && (
+        {showAddSongsModal && targetSetNumber !== null && (
           <AddSetlistSongsModal
             isOpen={showAddSongsModal}
             onClose={() => {
@@ -377,7 +366,7 @@ function SetlistDetailsPageContent() {
             }}
             onAddSongs={handleAddSongs}
             currentSetNumber={targetSetNumber}
-            setlist={setlist}  // Changed from existingSetlistSongs to full setlist
+            setlist={setlist}
           />
         )}
       </div>

@@ -1,24 +1,24 @@
-//src/app/bands/[bandId]/settings/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthProvider';
-import { getBand, updateBand, isUserBandAdmin } from '@/lib/services/firebase/bands';
+import { useBand } from '@/contexts/BandProvider';
+import { updateBand, isUserBandAdmin } from '@/lib/services/firebase/bands';
 import BandMembers from '@/components/auth/BandMembers';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function BandSettingsPage({ params }: { params: Promise<{ bandId: string }> }) {
+export default function BandSettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const unwrappedParams = React.use(params);
-  const bandId = unwrappedParams.bandId;
+  const { activeBand, isReady } = useBand();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<'details' | 'members' | null>(null);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -28,53 +28,43 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
     twitter: '',
     youtube: '',
   });
-  const [expandedSection, setExpandedSection] = useState<'details' | 'members' | null>('details');
 
   useEffect(() => {
-    const loadBand = async () => {
-      if (!user || !bandId) return;
+    const checkAdmin = async () => {
+      if (!user || !activeBand) return;
 
       try {
-        const [band, adminStatus] = await Promise.all([
-          getBand(bandId),
-          isUserBandAdmin(user.uid, bandId),
-        ]);
-
-        if (!band) {
-          router.push('/home');
-          return;
-        }
-
+        const adminStatus = await isUserBandAdmin(user.uid, activeBand.id);
         setIsAdmin(adminStatus);
-        setFormData({
-          name: band.name,
-          description: band.description || '',
-          imageUrl: band.imageUrl || '',
-          facebook: band.socialLinks?.facebook || '',
-          instagram: band.socialLinks?.instagram || '',
-          twitter: band.socialLinks?.twitter || '',
-          youtube: band.socialLinks?.youtube || '',
-        });
+
+        if (adminStatus) {
+          setFormData({
+            name: activeBand.name,
+            description: activeBand.description || '',
+            imageUrl: activeBand.imageUrl || '',
+            facebook: activeBand.socialLinks?.facebook || '',
+            instagram: activeBand.socialLinks?.instagram || '',
+            twitter: activeBand.socialLinks?.twitter || '',
+            youtube: activeBand.socialLinks?.youtube || '',
+          });
+        }
       } catch (error: any) {
-        console.error('Error loading band:', error);
-        setError(error.message || 'Failed to load band');
-      } finally {
-        setIsLoading(false);
+        setError(error.message || 'Failed to check permissions');
       }
     };
 
-    loadBand();
-  }, [user, bandId, router]);
+    checkAdmin();
+  }, [user, activeBand]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !isAdmin || !bandId) return;
+    if (!user || !isAdmin || !activeBand) return;
 
     setIsSaving(true);
     setError('');
 
     try {
-      await updateBand(bandId, {
+      await updateBand(activeBand.id, {
         name: formData.name,
         description: formData.description,
         imageUrl: formData.imageUrl,
@@ -85,9 +75,8 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
           youtube: formData.youtube,
         },
       });
-      router.push(`/bands/${bandId}`);
+      router.push(`/bands/${activeBand.id}`);
     } catch (error: any) {
-      console.error('Error updating band:', error);
       setError(error.message || 'Failed to update band');
     } finally {
       setIsSaving(false);
@@ -99,10 +88,10 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  if (isLoading) {
+  if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white">Loading band settings...</div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
       </div>
     );
   }
@@ -119,7 +108,10 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
     <main className="min-h-screen bg-gray-900 p-4">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-          <Link href={`/bands/${bandId}`} className="inline-flex items-center text-gray-400 hover:text-white">
+          <Link
+            href={`/bands/${activeBand?.id}`}
+            className="inline-flex items-center text-gray-400 hover:text-white"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Band
           </Link>
@@ -145,6 +137,8 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
             {expandedSection === 'details' && (
               <div className="bg-gray-800 p-4 rounded-lg mt-2">
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Form content stays the same */}
+                  {/* ... form fields remain unchanged ... */}
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-200 mb-1">
                       Band Name *
@@ -185,6 +179,7 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
                     />
                   </div>
+
                   <div className="space-y-4">
                     <h3 className="text-gray-200">Social Links</h3>
                     <div>
@@ -256,30 +251,24 @@ export default function BandSettingsPage({ params }: { params: Promise<{ bandId:
 
           {/* Band Members Section */}
           <div>
-  <button
-    className={`w-full text-left py-2 px-4 text-lg font-semibold ${
-      expandedSection === 'members' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
-    } rounded-lg`}
-    onClick={() => setExpandedSection(expandedSection === 'members' ? null : 'members')}
-  >
-    Band Members
-  </button>
-  {expandedSection === 'members' && (
-    <div className="bg-gray-800 p-4 rounded-lg mt-2">
-      {/* You might not need to change BandMembers component itself */}
-      {/* if you've already updated the bands.ts service to use the new collection structure */}
-      <BandMembers 
-        bandId={bandId} 
-        currentUserId={user?.uid || ''} 
-      />
-    </div>
-  )}
-</div>
-
-          
+            <button
+              className={`w-full text-left py-2 px-4 text-lg font-semibold ${
+                expandedSection === 'members' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
+              } rounded-lg`}
+              onClick={() => setExpandedSection(expandedSection === 'members' ? null : 'members')}
+            >
+              Band Members
+            </button>
+            {expandedSection === 'members' && activeBand && (
+              <div className="bg-gray-800 p-4 rounded-lg mt-2">
+                <BandMembers
+                  bandId={activeBand.id}
+                  currentUserId={user?.uid || ''}
+                />
+              </div>
+            )}
+          </div>
         </div>
-
-        
       </div>
     </main>
   );

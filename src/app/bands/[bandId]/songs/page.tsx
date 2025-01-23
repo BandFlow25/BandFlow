@@ -90,9 +90,9 @@ function SongsContent() {
 }
 
 export default function SongsPage() {
-  const { activeBand, isActiveBandLoaded } = useBand();
+  const { activeBand, isReady } = useBand();
 
-  if (!isActiveBandLoaded || !activeBand) {
+  if (!isReady) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading...</div>
