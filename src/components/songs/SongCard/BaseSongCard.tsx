@@ -106,6 +106,7 @@ export function BaseSongCard({
     }
   };
 
+  
   const getCardStyle = () => {
     switch (song.status) {
       case SONG_STATUS.PRACTICE:
