@@ -28,8 +28,7 @@ export default function ProfileSetup() {
 
   useEffect(() => {
     async function loadProfile() {
-      console.log("Loading profile. User:", user);
-      console.log("Is loading:", isLoading);
+ 
   
       if (isLoading) return; // Prevent execution while loading
   
@@ -41,7 +40,7 @@ export default function ProfileSetup() {
   
       try {
         const profile = await getUserProfile(user.uid);
-        console.log("Profile fetched:", profile);
+   
   
         if (profile) {
           setFormData({

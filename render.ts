@@ -21,4 +21,4 @@ const fullHtml = `<!DOCTYPE html>
 </html>`;
 
 fs.writeFileSync("index.html", fullHtml, "utf8");
-console.log("index.html has been generated!");
+

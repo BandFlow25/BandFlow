@@ -1,7 +1,8 @@
+//src\lib\config\firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator  } from "firebase/firestore";
-import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 
 
@@ -34,13 +35,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Connect to Firestore emulator if running locally
-if (process.env.NEXT_PUBLIC_FIREBASE_EMULATOR === "true") {
-  console.log("Connecting to Firestore Emulator...");
-  connectFirestoreEmulator(db, "localhost", 8080); // Adjust port if needed
-  console.log("Connecting to Storage Emulator...");
-  connectStorageEmulator(storage, "localhost", 9199); // Adjust port if needed
-}
 
 // Auth providers
 const googleProvider = new GoogleAuthProvider();

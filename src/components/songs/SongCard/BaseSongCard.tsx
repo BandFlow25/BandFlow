@@ -6,10 +6,6 @@ import {
   Play,
   Trash2,
   ThumbsDown,
-  ListChecks,
-  PauseCircle,
-  XCircle,
-  BookOpen,
   Clock,
   ListMusic,
   Flame,
@@ -39,7 +35,6 @@ interface BaseSongCardProps {
 
 export function BaseSongCard({
   song,
-  type,
   className,
   onSongDeleted,
   deleteMode
@@ -78,7 +73,7 @@ export function BaseSongCard({
   const handleStatusChange = async (newStatus: SongStatus) => {
     if (!user || !activeBand?.id) return;
     try {
-      await updateSongStatus(activeBand.id, song.id, user.uid, newStatus);
+      await updateSongStatus(activeBand.id, song.id, newStatus);
       setIsActionsOpen(false);
     } catch (error) {
       console.error('Error updating song status:', error);
@@ -99,27 +94,25 @@ export function BaseSongCard({
     e.stopPropagation();
     if (!user || !activeBand?.id) return;
     try {
-      await deleteBandSong(activeBand.id, song.id, user.uid);
+      await deleteBandSong(activeBand.id, song.id);
       onSongDeleted?.();
     } catch (error) {
       console.error('Error deleting song:', error);
     }
   };
 
-  
+
   const getCardStyle = () => {
     switch (song.status) {
       case SONG_STATUS.PRACTICE:
         return `border-t-2 ${STATUS_COLORS.PRACTICE.border} ${STATUS_COLORS.PRACTICE.bgFaded}`;
-        case SONG_STATUS.SUGGESTED:
-          return `border-t-2 ${
-            needsUserAction 
-              ? STATUS_COLORS.SUGGESTED.border // Orange for needs action
-              : 'border-blue-500'  // Blue for voting in progress
-          } ${
-            needsUserAction 
-              ? STATUS_COLORS.SUGGESTED.bgFaded  // Orange bg for needs action
-              : 'bg-blue-500/10'   // Blue bg for voting in progress
+      case SONG_STATUS.SUGGESTED:
+        return `border-t-2 ${needsUserAction
+            ? STATUS_COLORS.SUGGESTED.border // Orange for needs action
+            : 'border-blue-500'  // Blue for voting in progress
+          } ${needsUserAction
+            ? STATUS_COLORS.SUGGESTED.bgFaded  // Orange bg for needs action
+            : 'bg-blue-500/10'   // Blue bg for voting in progress
           }`;
       case SONG_STATUS.REVIEW:
         return `border-t-2 ${STATUS_COLORS.REVIEW.border} ${STATUS_COLORS.REVIEW.bgFaded}`;
@@ -248,7 +241,7 @@ export function BaseSongCard({
                   {isHighScore && <Flame className="w-6 h-6 text-orange-400 animate-bounce" />}
                   {hasZeroVote && <ThumbsDown className="w-5 h-5 text-red-400 animate-pulse" />}
                   <span className={`text-sm font-medium ${isHighScore ? 'text-orange-400' :
-                      hasZeroVote ? 'text-red-400' : 'text-gray-400'
+                    hasZeroVote ? 'text-red-400' : 'text-gray-400'
                     }`}>
                     {score}%
                   </span>
@@ -313,15 +306,11 @@ export function BaseSongCard({
 
         {/* Delete Mode Overlay */}
         {deleteMode && isAdmin && (
-          <div
-            className="absolute inset-0 bg-red-900/80 flex items-center justify-center cursor-pointer rounded-lg"
+          <button
             onClick={handleDelete}
+            className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-red-500/20 transition-colors group"
           >
-            <div className="flex flex-col items-center gap-1">
-              <Trash2 className="w-5 h-5 text-white" />
-              <span className="text-xs text-white">Remove</span>
-            </div>
-          </div>
+          </button>
         )}
       </div>
 

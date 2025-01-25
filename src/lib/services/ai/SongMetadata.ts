@@ -2,8 +2,7 @@
 
 export async function getSongMetadata(title: string, artist: string) {
   try {
-    console.log('Fetching metadata for:', title, artist);
-    
+      
     const response = await fetch('/api/metadata', {
       method: 'POST',
       headers: {
@@ -19,7 +18,7 @@ export async function getSongMetadata(title: string, artist: string) {
     }
 
     const data = await response.json();
-    console.log('Metadata response:', data);
+   
     
     return {
       key: data.key,

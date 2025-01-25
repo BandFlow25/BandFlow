@@ -38,7 +38,7 @@ export default function CreateBandPage() {
     setError('');
   
     try {
-      console.log('Starting band creation process...');
+ 
       const bandData = {
         name: formData.name,
         description: formData.description,
@@ -51,9 +51,8 @@ export default function CreateBandPage() {
         }
       };
   
-      console.log('Calling createBand with data:', bandData);
       await createBand(user.uid, bandData);
-      console.log('Band creation completed successfully');
+
       router.push('/home');
     } catch (error) {
       console.error('Detailed error in handleSubmit:', error);

@@ -1,4 +1,4 @@
-// playbook/page.tsx
+// src\app\bands\[bandId]\playbook\page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,7 +33,7 @@ export default function PlayBookPage() {
   return (
     <SongsProvider>
       <PageLayout 
-        title="Play Book / Repertoire"
+        title="Play Book"
         count={playBookCount}
         pageType="songs"
       >

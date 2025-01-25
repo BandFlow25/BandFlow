@@ -124,7 +124,7 @@ export default function BandPage() {
   ];
   
   return (
-    <PageLayout title={`Welcome to ${activeBand.name}`}>
+    <PageLayout title={`Welcome to Band Flow`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sections.map((section) => (
           <Link

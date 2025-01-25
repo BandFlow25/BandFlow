@@ -8,6 +8,7 @@ import { updateBand, isUserBandAdmin } from '@/lib/services/firebase/bands';
 import BandMembers from '@/components/auth/BandMembers';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { BulkSongUpload } from '@/components/songs/BulkUpload/BulkSongUpload';
 
 export default function BandSettingsPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function BandSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<'details' | 'members' | null>(null);
+  const [expandedSection, setExpandedSection] = useState<'details' | 'members' | 'bulk-upload' | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -127,9 +128,8 @@ export default function BandSettingsPage() {
           {/* Band Details Section */}
           <div>
             <button
-              className={`w-full text-left py-2 px-4 text-lg font-semibold ${
-                expandedSection === 'details' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
-              } rounded-lg`}
+              className={`w-full text-left py-2 px-4 text-lg font-semibold ${expandedSection === 'details' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
+                } rounded-lg`}
               onClick={() => setExpandedSection(expandedSection === 'details' ? null : 'details')}
             >
               Band Details
@@ -252,9 +252,8 @@ export default function BandSettingsPage() {
           {/* Band Members Section */}
           <div>
             <button
-              className={`w-full text-left py-2 px-4 text-lg font-semibold ${
-                expandedSection === 'members' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
-              } rounded-lg`}
+              className={`w-full text-left py-2 px-4 text-lg font-semibold ${expandedSection === 'members' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
+                } rounded-lg`}
               onClick={() => setExpandedSection(expandedSection === 'members' ? null : 'members')}
             >
               Band Members
@@ -265,6 +264,23 @@ export default function BandSettingsPage() {
                   bandId={activeBand.id}
                   currentUserId={user?.uid || ''}
                 />
+              </div>
+            )}
+          </div>
+
+
+          {/* Bulk Upload Section */}
+          <div>
+            <button
+              className={`w-full text-left py-2 px-4 text-lg font-semibold ${expandedSection === 'bulk-upload' ? 'text-white bg-gray-700' : 'text-gray-400 bg-gray-800'
+                } rounded-lg`}
+              onClick={() => setExpandedSection(expandedSection === 'bulk-upload' ? null : 'bulk-upload')}
+            >
+              Bulk Song Upload
+            </button>
+            {expandedSection === 'bulk-upload' && (
+              <div className="bg-gray-800 p-4 rounded-lg mt-2">
+                <BulkSongUpload />
               </div>
             )}
           </div>

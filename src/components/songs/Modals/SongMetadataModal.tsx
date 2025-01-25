@@ -1,5 +1,5 @@
 // components/songs/Modals/SongMetadataModal.tsx
-import { Clock, Activity, Music2 } from 'lucide-react';
+import { X, Clock, Activity, Music2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { BandSong } from '@/lib/types/song';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,11 @@ export function SongMetadataModal({
 }: SongMetadataModalProps) {
   // Helper to render basic metadata section
   const renderBasicMetadata = () => (
+    
     <div className="space-y-3">
+                <button onClick={onClose} className="absolute right-3 top-3 text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
       <div className="flex items-center justify-between py-2 border-b border-gray-800">
         <span className="text-gray-400 flex items-center gap-2">
           <Clock className="w-4 h-4" />
@@ -74,7 +78,7 @@ export function SongMetadataModal({
           <DialogTitle className="text-lg font-semibold">
             {song.title}
           </DialogTitle>
-          <p className="text-sm text-gray-400">{song.artist}</p>
+          <p className="text-sm text-gray-400"><span>{song.artist}</span></p>
         </DialogHeader>
 
         {/* Basic metadata always shown */}

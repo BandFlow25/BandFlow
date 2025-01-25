@@ -43,13 +43,7 @@ export const getSetDurationInfo = (durationSeconds: number, targetMinutes: numbe
   const variance = Math.abs(durationMinutes - targetMinutes);
   const variancePercent = (variance / targetMinutes) * 100;
   
-  console.log('Duration Info:', {
-    durationSeconds,
-    targetMinutes,
-    durationMinutes,
-    variance,
-    variancePercent
-  });
+
   
   let color;
   if (variancePercent <= 8) {

@@ -310,8 +310,7 @@ export async function processInvite(inviteCode: string, userId: string): Promise
 
     const firstDoc = querySnapshot.docs[0];
     if (!firstDoc) {
-      console.log('No invite found');
-      return null;
+         return null;
     }
 
     invite = firstDoc.data() as BandInvite;

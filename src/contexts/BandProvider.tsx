@@ -31,11 +31,12 @@ interface BandContextType extends BandState {
 const BandContext = createContext<BandContextType | undefined>(undefined);
 
 const PROTECTED_ROUTES = ['/bands/[bandId]'];
+const EXCLUDED_ROUTES = ['/god'];
 
 export function BandProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, profile, requireProfile } = useAuth();
+  const { user, requireProfile } = useAuth();
   
   const [state, setState] = useState<BandState>({
     availableBands: [],
@@ -47,9 +48,10 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
     error: null,
   });
 
-  const isProtectedRoute = pathname ? PROTECTED_ROUTES.some(route => 
-    pathname.startsWith(route.replace('[bandId]', ''))
-  ) : false;
+  const isProtectedRoute = pathname ? 
+  PROTECTED_ROUTES.some(route => pathname.startsWith(route.replace('[bandId]', ''))) && 
+  !EXCLUDED_ROUTES.includes(pathname) : 
+  false;
 
   // Computed ready state
   const isReady = !state.isLoadingBands && 

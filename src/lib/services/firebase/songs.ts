@@ -1,5 +1,5 @@
 // src/lib/services/firebase/songs.ts
-import { collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, serverTimestamp, deleteDoc, Timestamp } from 'firebase/firestore';
+import { writeBatch, collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, serverTimestamp, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/config/firebase';
 import { BaseSong, BandSong, SongStatus, RAGStatus, SONG_STATUS } from '@/lib/types/song';
 import { auth } from '@/lib/config/firebase';
@@ -15,8 +15,6 @@ const getBandSongsCollection = (bandId: string) => {
 const getBandMembersCollection = (bandId: string) => {
   return collection(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_MEMBERS);
 };
-
-
 
 // src/lib/services/firebase/songs.ts
 export async function addVote(
@@ -73,6 +71,7 @@ export async function addVote(
     throw error;
   }
 }
+
 export async function updateRagStatus(
   bandId: string,
   songId: string,
@@ -103,7 +102,6 @@ export async function updateRagStatus(
 export async function updateSongStatus(
   bandId: string,
   songId: string,
-  userId: string,
   newStatus: SongStatus
 ): Promise<void> {
   try {
@@ -127,7 +125,6 @@ export async function updateSongStatus(
 export async function deleteBandSong(
   bandId: string,
   songId: string,
-  userId: string
 ): Promise<void> {
   try {
     const songRef = doc(getBandSongsCollection(bandId), songId);
@@ -278,3 +275,31 @@ export async function checkAllMembersVoted(
   const totalVotes = Object.keys(votes || {}).length;
   return totalVotes >= totalMembers;
 }
+
+export async function deleteBaseSongWithCascade(baseSongId: string) {
+  const batch = writeBatch(db);
+  
+  // Delete song from all bands
+  const bandsSnapshot = await getDocs(collection(db, COLLECTIONS.BANDS));
+  
+  for (const bandDoc of bandsSnapshot.docs) {
+    const bandSongsRef = collection(bandDoc.ref, COLLECTIONS.BAND_SONGS);
+    const songsQuery = query(bandSongsRef, where('baseSongId', '==', baseSongId));
+    const songsSnapshot = await getDocs(songsQuery);
+    
+    songsSnapshot.docs.forEach(songDoc => {
+      batch.delete(songDoc.ref);
+    });
+  }
+ 
+  // Delete base song
+  const baseSongRef = doc(db, COLLECTIONS.BASE_SONGS, baseSongId);
+  batch.delete(baseSongRef);
+ 
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Error in cascade delete:', error);
+    throw error;
+  }
+ }

@@ -21,6 +21,7 @@ export interface UserProfile {
   hasProfile?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  godMode?: boolean;
 }
 
 export const createUserProfile = async (user: User, profileData: Partial<UserProfile>) => {
@@ -75,9 +76,7 @@ export const registerWithEmail = async (email: string, password: string) => {
 
 export const signInWithEmail = async (email: string, password: string) => {
   try {
-    console.log('Calling Firebase Auth with email:', email);
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log('Firebase Auth success:', userCredential.user);
     return userCredential.user;
   } catch (error) {
     console.error('Firebase Auth error:', error);

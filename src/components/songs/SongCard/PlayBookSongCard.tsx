@@ -1,3 +1,4 @@
+//src\components\songs\SongCard\PlayBookSongCard.tsx
 import { useState } from 'react';
 import { Music, Play, MoreVertical, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,7 +37,7 @@ export function PlayBookSongCard({
   const handleStatusChange = async (newStatus: SongStatus) => {
     if (!user || !activeBand?.id) return;
     try {
-      await updateSongStatus(activeBand.id, song.id, user.uid, newStatus);
+      await updateSongStatus(activeBand.id, song.id, newStatus);
       setIsActionsOpen(false);
     } catch (error) {
       console.error('Error updating song status:', error);

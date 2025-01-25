@@ -2,7 +2,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-console.log('API Key exists:', !!process.env.OPENAI_API_KEY);
 
 let openai: OpenAI | null = null;
 try {
@@ -13,7 +12,7 @@ try {
   openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
   });
-  console.log('OpenAI initialized successfully');
+
 } catch (error) {
   console.error('Failed to initialize OpenAI:', error);
 }

@@ -16,9 +16,13 @@ export function PageLayout({ children, title, count, pageType = 'songs' }: PageL
     <SongsProvider>
       <div className="flex min-h-screen bg-gray-900">
         <Sidebar />
-        <main className="flex-1 w-0 min-w-0 flex flex-col h-screen overflow-hidden"> {/* Added h-screen and overflow-hidden */}
-          <PageTitleHeader title={title} count={count} pageType={pageType} />
-          <div className="flex-1 overflow-hidden"> {/* Changed to overflow-hidden */}
+        <main className="flex-1 w-0 min-w-0 flex flex-col h-screen overflow-hidden">
+          <PageTitleHeader 
+            title={title} 
+            count={count} 
+            pageType={pageType} 
+          />
+          <div className="flex-1 overflow-hidden">
             {children}
           </div>
         </main>
@@ -26,4 +30,4 @@ export function PageLayout({ children, title, count, pageType = 'songs' }: PageL
       </div>
     </SongsProvider>
   );
-}
+ }
