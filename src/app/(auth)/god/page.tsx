@@ -139,7 +139,7 @@ const GodModePage = () => {
             <div className="space-y-4">
               <input
                 type="text"
-                placeholder="Search songs..."
+                placeholder=""
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-gray-800 rounded-lg px-4 py-2 text-gray-100 border border-gray-700"

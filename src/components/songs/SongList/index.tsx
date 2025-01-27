@@ -168,7 +168,7 @@ export function SongList({ type }: { type: SongListType }) {
       <div className="flex-none space-y-4 p-4">
         <input
           type="text"
-          placeholder="Search songs..."
+          placeholder=""
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-gray-800 rounded-lg px-4 py-2 text-gray-100 border-gray-700"

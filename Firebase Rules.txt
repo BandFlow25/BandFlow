@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is band member
+    function isBandMember(bandId) {
+      return exists(/databases/$(database)/documents/bf_bands/$(bandId)/members/$(request.auth.uid));
+    }
+    
+    // Helper function to check if user is band admin
+    function isBandAdmin(bandId) {
+      return exists(/databases/$(database)/documents/bf_bands/$(bandId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/bf_bands/$(bandId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Allow collection group queries for invites - public read for validation
+    match /{path=**}/invites/{inviteId} {
+      allow read: if true;
+    }
+    
+    // Firestore rules for bf_bands and its subcollections
+    match /bf_bands/{bandId} {
+      // Main band document rules
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && isBandAdmin(bandId);
+
+      // Members subcollection rules
+      match /members/{memberId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && (
+          // Case 1: First member (creator) - their member doc ID must match their auth ID
+          (!exists(/databases/$(database)/documents/bf_bands/$(bandId)/members/**) && 
+           memberId == request.auth.uid && 
+           request.resource.data.role == 'admin') ||
+          // Case 2: Added by existing admin
+          isBandAdmin(bandId) ||
+          // Case 3: Self-join via invite
+          memberId == request.auth.uid
+        );
+        
+        allow update: if request.auth != null && 
+          ((request.auth.uid == memberId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'instruments'])) || 
+          isBandAdmin(bandId));
+        allow delete: if request.auth != null && isBandAdmin(bandId);
+      }
+
+      // Invites subcollection rules - allowing public read but controlled write
+match /invites/{inviteId} {
+  allow read: if true;  // Allow public read for validation
+  allow create, delete: if request.auth != null && isBandAdmin(bandId);
+  allow update: if request.auth != null && (
+    isBandAdmin(bandId) ||
+    request.auth != null  // Allow any authenticated user to update (for recording usage)
+  );
+}
+
+      // Songs subcollection rules
+      match /songs/{songId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && isBandMember(bandId);
+        allow update: if request.auth != null && isBandMember(bandId);
+        allow delete: if request.auth != null && isBandAdmin(bandId);
+      }
+
+      // Setlists subcollection rules
+      match /setlists/{setlistId} {
+        allow read: if request.auth != null && isBandMember(bandId);
+        allow write: if request.auth != null && isBandMember(bandId);
+      }
+    }
+
+    // User profiles rules
+    match /bf_users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Base songs collection rules
+    match /bf_base_songs/{songId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
+    }
+  }
+}

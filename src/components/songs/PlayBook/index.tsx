@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useSongs } from '@/contexts/SongProvider';
 import { Button } from '@/components/ui/button';
 import { PlayBookSongCard } from '@/components/songs/SongCard/PlayBookSongCard';
-import  CreateSetlistModal  from '@/components/songs/Modals/CreateSetlistModal';
+//import  CreateSetlistModal  from '@/components/songs/Modals/CreateSetlistModal';
 import type { BandSong } from '@/lib/types/song';
 import { Loader2 } from 'lucide-react';
 
@@ -126,7 +126,7 @@ export function PlayBookList() {
         )}
       </div>
 
-      {/* Create Setlist Modal */}
+      {/* Create Setlist Modal
       {showCreateModal && (
         <CreateSetlistModal
           onClose={() => {
@@ -136,7 +136,7 @@ export function PlayBookList() {
           }}
           selectedSongs={selectedSongs}
         />
-      )}
+      )} */}
     </div>
   );
 }

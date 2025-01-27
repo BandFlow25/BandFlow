@@ -1,227 +1,203 @@
-//src\app\bands\[bandId]\setlists\page.tsx
+// src/app/bands/[bandId]/setlists/page.tsx
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useBand } from '@/contexts/BandProvider';
-import { Plus, Clock, ListMusic } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/config/firebase';
-import { COLLECTIONS } from '@/lib/constants';
+import { getBandSetlists, deleteSetlist } from '@/lib/services/firebase/setlists';
 import type { Setlist } from '@/lib/types/setlist';
-import CreateSetlistModal from '@/components/songs/Modals/CreateSetlistModal';
-import { Button } from '@/components/ui/button';
-import { SearchHeader } from '@/components/songs/Shared/SearchHeader';
-import { cn } from '@/lib/utils';
-import { SetlistProvider } from '@/contexts/SetlistProvider';
+import Link from 'next/link';
+import { Plus, Calendar, Clock, MoreVertical, Copy, Trash2 } from 'lucide-react';
+import { DurationtoMinSec } from '@/lib/services/bandflowhelpers/SetListHelpers';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from 'react-hot-toast';
 
-
-// Types
-interface SetlistOverview extends Setlist {
-  id: string;
-  hasNonPlaybookSongs?: boolean;
-}
-
-type SortOption = 'created' | 'duration' | 'sets';
-
-function SetlistsPageContent() {
-  const router = useRouter();
+function SetlistsContent() {
   const { activeBand, isReady } = useBand();
-  
-  // State management
-  const [setlists, setSetlists] = useState<SetlistOverview[]>([]);
+  const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('created');
-  const [groupBySets, setGroupBySets] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [setlistToDelete, setSetlistToDelete] = useState<Setlist | null>(null);
 
-  // Fetch setlists
   useEffect(() => {
-    if (!activeBand?.id) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    const setlistsRef = collection(db, COLLECTIONS.BANDS, activeBand.id, COLLECTIONS.SETLISTS);
-    const setlistsQuery = query(setlistsRef, orderBy('createdAt', 'desc'));
-
-    const unsubscribe = onSnapshot(
-      setlistsQuery, 
-      (snapshot) => {
-        const setlistData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          hasNonPlaybookSongs: false
-        })) as SetlistOverview[];
-        
-        setSetlists(setlistData);
-        setIsLoading(false);
-      },
-      (error) => {
-        setError('Failed to load setlists');
-        setIsLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
+    loadSetlists();
   }, [activeBand?.id]);
 
-  // Memoized filtered and sorted setlists
-  const organizedSetlists = useMemo(() => {
-    let filtered = setlists;
-
-    if (searchQuery) {
-      filtered = filtered.filter(setlist =>
-        setlist.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  const loadSetlists = async () => {
+    if (!activeBand?.id) return;
+    
+    try {
+      setIsLoading(true);
+      const data = await getBandSetlists(activeBand.id);
+      setSetlists(data);
+    } catch (err) {
+      console.error('Error loading setlists:', err);
+      setError('Failed to load setlists');
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    filtered = [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'duration':
-          return (b.format?.setDuration || 0) - (a.format?.setDuration || 0);
-        case 'sets':
-          return (b.format?.numSets || 0) - (a.format?.numSets || 0);
-        default:
-          return b.createdAt.seconds - a.createdAt.seconds;
-      }
-    });
+  const handleDeleteClick = (setlist: Setlist) => {
+    setSetlistToDelete(setlist);
+    setIsDeleteDialogOpen(true);
+  };
 
-    if (groupBySets) {
-      return filtered.reduce((acc, setlist) => {
-        const key = `${setlist.format.numSets} ${setlist.format.numSets === 1 ? 'Set' : 'Sets'}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(setlist);
-        return acc;
-      }, {} as Record<string, typeof filtered>);
+  const handleConfirmDelete = async () => {
+    if (!setlistToDelete || !activeBand?.id) return;
+
+    try {
+      await deleteSetlist(activeBand.id, setlistToDelete.id);
+      toast.success('Setlist deleted');
+      loadSetlists();
+    } catch (err) {
+      toast.error('Failed to delete setlist');
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setSetlistToDelete(null);
     }
+  };
 
-    return { 'All Setlists': filtered };
-  }, [setlists, searchQuery, sortBy, groupBySets]);
-
-  // Loading state
-  if (!isReady || isLoading) {
+  if (!isReady) {
     return (
-      <PageLayout title="Setlists">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-white">Loading setlists...</div>
-        </div>
-      </PageLayout>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <PageLayout title="Setlists">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-red-500">{error}</div>
-        </div>
-      </PageLayout>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
     );
   }
 
   return (
     <PageLayout title="Setlists">
-      <div className="flex flex-col h-[calc(100vh-120px)]">
-        <SearchHeader
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search setlists..."
-          className="border-b border-gray-800"
-        >
-          <div className="flex gap-4 items-center">
-            <div className="flex-1" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="bg-gray-800 border-gray-700 rounded-lg px-3 py-2 text-gray-300"
-            >
-              <option value="created">Recently Created</option>
-              <option value="duration">Set Duration</option>
-              <option value="sets">Number of Sets</option>
-            </select>
-            <Button
-              variant="outline"
-              onClick={() => setGroupBySets(!groupBySets)}
-              className={cn(
-                "border-gray-700",
-                groupBySets && "bg-gray-700"
-              )}
-            >
-              Group by Sets
-            </Button>
+      <div className="p-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg mb-4">
+            {error}
           </div>
-        </SearchHeader>
+        )}
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {setlists.length === 0 ? (
-            <div className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-400 mb-4">No setlists yet</h3>
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-orange-500 hover:bg-orange-400"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Setlist
-              </Button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Create New Card */}
+          <Link
+            href={`/bands/${activeBand?.id}/setlists/create`}
+            className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-colors"
+          >
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center">
+                <Plus className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-white font-medium">Create New Setlist</span>
+              <p className="text-sm text-gray-400 text-center">
+                Start with an empty setlist or create from your Play Book
+              </p>
             </div>
-          ) : (
-            <>
-              {Object.entries(organizedSetlists).map(([groupTitle, groupSetlists]) => (
-                <div key={groupTitle} className="mb-8">
-                  <h3 className="text-lg font-medium text-white mb-4">{groupTitle}</h3>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {groupSetlists.map(setlist => (
-                      <div
-                        key={setlist.id}
-                        onClick={() => router.push(`/bands/${activeBand?.id}/setlists/${setlist.id}`)}
-                        className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors cursor-pointer group"
+          </Link>
+
+          {/* Setlist Cards */}
+          {setlists.map((setlist) => (
+            <div
+              key={setlist.id}
+              className="bg-gray-800 rounded-lg overflow-hidden group relative"
+            >
+              {/* Card Header */}
+              <div className="p-4 border-b border-gray-700">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-medium text-white truncate">
+                    {setlist.name}
+                  </h3>
+                  <div className="relative">
+                    <button className="p-1 hover:bg-gray-700 rounded">
+                      <MoreVertical className="w-5 h-5 text-gray-400" />
+                    </button>
+                    <div className="absolute right-0 top-8 bg-gray-700 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        className="w-full px-4 py-2 text-sm text-left text-white hover:bg-gray-600 flex items-center gap-2"
+                        onClick={() => {/* Handle duplicate */}}
                       >
-                        <div className="flex justify-between items-start mb-3">
-                          <h3 className="font-medium text-white group-hover:text-orange-500 transition-colors">
-                            {setlist.name}
-                          </h3>
-                          <span className="text-xs text-gray-500">
-                            {new Date(setlist.createdAt.seconds * 1000).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <div className="flex items-center gap-1">
-                            <ListMusic className="w-4 h-4" />
-                            <span>{setlist.songs.length} songs</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
-                          <Clock className="w-4 h-4" />
-                          <span>
-                            {setlist.format.numSets} {setlist.format.numSets === 1 ? 'set' : 'sets'}, {setlist.format.setDuration} mins each
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                        <Copy className="w-4 h-4" />
+                        Duplicate
+                      </button>
+                      <button 
+                        className="w-full px-4 py-2 text-sm text-left text-red-400 hover:bg-gray-600 flex items-center gap-2"
+                        onClick={() => handleDeleteClick(setlist)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
 
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="fixed bottom-6 right-6 rounded-full h-14 w-14 p-0 bg-orange-500 hover:bg-orange-400"
-              >
-                <Plus className="w-6 h-6" />
-              </Button>
-            </>
-          )}
+              {/* Card Content */}
+              <Link href={`/bands/${activeBand?.id}/setlists/${setlist.id}`}>
+                <div className="p-4 space-y-4">
+                  {/* Set Summary */}
+                  <div className="space-y-2">
+                    {setlist.sets?.map((set, index) => {
+                      if (set.id === 'extras') return null;
+                      const totalDuration = set.songs?.reduce((total, song) => {
+                        const songDetails = setlist.songDetails?.[song.songId];
+                        return total + (songDetails?.metadata?.duration ? parseInt(songDetails.metadata.duration) : 0);
+                      }, 0) || 0;
+                      
+                      return (
+                        <div key={set.id} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">{set.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">{set.songs.length} songs</span>
+                            <span className="text-gray-400">
+                              {DurationtoMinSec(totalDuration)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer Info */}
+                  <div className="pt-4 border-t border-gray-700 flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>
+                        {new Date(setlist.createdAt.toDate()).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      <span>{setlist.format.setDuration} mins/set</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          ))}
         </div>
 
-        {showCreateModal && (
-          <CreateSetlistModal
-            onClose={() => setShowCreateModal(false)}
-          />
-        )}
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Setlist</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{setlistToDelete?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </PageLayout>
   );
@@ -229,8 +205,6 @@ function SetlistsPageContent() {
 
 export default function SetlistsPage() {
   return (
-    <SetlistProvider>
-      <SetlistsPageContent />
-    </SetlistProvider>
+      <SetlistsContent />
   );
 }

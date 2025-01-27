@@ -1,3 +1,5 @@
+
+// src/components/layout/PageTitleHeader.tsx
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,8 +11,8 @@ type PageType = 'songs' | 'setlists' | 'media' | 'events';
 interface PageTitleHeaderProps {
   title: string;
   count?: number | undefined;
-  pageType?: 'songs' | 'setlists' | 'media' | 'events';
- }
+  pageType?: PageType;
+}
 
 export function PageTitleHeader({
   title,
@@ -23,19 +25,31 @@ export function PageTitleHeader({
   const searchParams = useSearchParams();
   const currentView = searchParams?.get('view') || 'all';
 
-  // Only show dropdown in songs list view
-  const showDropdown = pathname?.includes('/songs') && !pathname?.includes('/create');
+  // Show dropdown in songs list and setlists views
+  const showDropdown = (pathname?.includes('/songs') || pathname?.includes('/playbook') || pathname?.includes('/setlists')) && !pathname?.includes('/create');
 
-  const views = [
+  const songViews = [
     { label: 'Suggestions', value: 'suggestions' },
     { label: 'Practice List', value: 'practice' },
     { label: 'All Songs', value: 'all' }
   ];
 
+  const setlistViews = [
+    { label: 'Play Book', value: 'playbook' },
+    { label: 'Setlists', value: 'setlists' }
+  ];
+
+  const views = pathname?.includes('/songs') ? songViews : setlistViews;
+
   const handleViewChange = (value: string) => {
     const menu = document.getElementById('view-menu');
     if (menu) menu.classList.add('hidden');
-    router.push(`/bands/${activeBand?.id}/songs?view=${value}`);
+    
+    if (pathname?.includes('/songs')) {
+      router.push(`/bands/${activeBand?.id}/songs?view=${value}`);
+    } else {
+      router.push(`/bands/${activeBand?.id}/${value}`);
+    }
   };
 
   return (
@@ -56,7 +70,7 @@ export function PageTitleHeader({
 
             <div
               id="view-menu"
-              className="absolute hidden top-full left-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-1 min-w-[160px] z-50" // Added z-50
+              className="absolute hidden top-full left-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-1 min-w-[160px] z-50"
             >
               {views.map((view) => (
                 <button
