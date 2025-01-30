@@ -1,4 +1,4 @@
-//src\components\Setlists\SetlistSet.tsx
+//src\components\Setlists\SetlistSet.
 import { useState, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
