@@ -1,4 +1,4 @@
-// src/app/bands/[bandId]/setlists/[setlistId]/page.tsx
+//src\app\bands\[bandId]\setlists\[setlistid]\page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -6,8 +6,10 @@ import { Clock, ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
 import { useSetlist } from '@/contexts/SetlistProvider';
-import { SetlistSet } from '@/components/Setlists/SetlistSet';
+import { SetlistSet } from '@/components/setlists/SetlistSet';
+import { SetlistSongCard } from '@/components/setlists/SetlistSongCard'
 import { toast } from 'react-hot-toast';
+import type { BandSong } from '@/lib/types/song';
 import { updateSetlistSets } from '@/lib/services/firebase/setlists';
 import {
     DndContext,
@@ -18,6 +20,7 @@ import {
     useSensors,
     MouseSensor,
     TouchSensor,
+    DragOverlay,
     closestCenter
 } from '@dnd-kit/core';
 import type { DropPosition } from '@/lib/types/setlist';
@@ -27,8 +30,9 @@ function SetlistContent() {
     const { setlist, isLoading, updateSetlist } = useSetlist();
     const [activeSetId, setActiveSetId] = useState<string | null>(null);
     const [dropPosition, setDropPosition] = useState<DropPosition | null>(null);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [activeSong, setActiveSong] = useState<BandSong | null>(null);
 
-    // Configure sensors for both mouse and touch
     const sensors = useSensors(
         useSensor(MouseSensor, {
             activationConstraint: {
@@ -45,11 +49,13 @@ function SetlistContent() {
 
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
-        const activeSet = setlist?.sets.find(set =>
-            set.songs.some(song => song.songId === active.id)
-        );
-        if (activeSet) {
-            setActiveSetId(activeSet.id);
+        setActiveId(active.id.toString());
+        if (active.data.current?.song) {
+            setActiveSong(active.data.current.song);
+        }
+        const sourceSetId = active.data.current?.setId;
+        if (sourceSetId) {
+            setActiveSetId(sourceSetId);
         }
     };
 
@@ -84,59 +90,53 @@ function SetlistContent() {
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
         
+        setActiveId(null);
         setActiveSetId(null);
         setDropPosition(null);
+        setActiveSong(null);
         
         if (!over || !setlist || !activeBand?.id) return;
-      
+
         try {
             let newSets = [...setlist.sets];
-      
-            if (active.data.current?.type === 'setlist-song') {
-                const sourceSetId = active.data.current.setId;
-                const targetSetId = over.data.current?.setId || over.id;
-                const sourceSet = newSets.find(s => s.id === sourceSetId);
-                const targetSet = newSets.find(s => s.id === targetSetId);
+            const sourceSetId = active.data.current?.setId;
+            const targetSetId = over.data.current?.setId || over.id;
+            const sourceSet = newSets.find(s => s.id === sourceSetId);
+            const targetSet = newSets.find(s => s.id === targetSetId);
+            
+            if (!sourceSet || !targetSet) return;
+
+            const songId = active.data.current?.songId;
+            const sourceIndex = sourceSet.songs.findIndex(s => s.id === active.id);
+            const movedSong = sourceSet.songs[sourceIndex];
+            
+            if (!movedSong) return;
+            
+            sourceSet.songs.splice(sourceIndex, 1);
+            
+            const targetIndex = over.data.current?.type === 'setlist-song'
+                ? over.data.current.index
+                : targetSet.songs.length;
                 
-                if (!sourceSet || !targetSet) return;
-        
-                const songIndex = sourceSet.songs.findIndex(s => s.songId === active.id);
-                const movedSong = sourceSet.songs[songIndex];
-                
-                if (!movedSong) return; // Early return if song not found
-                
-                // Remove from source
-                sourceSet.songs.splice(songIndex, 1);
-                
-                // Add to target at correct position
-                const targetIndex = over.data.current?.type === 'setlist-song'
-                    ? over.data.current.index
-                    : targetSet.songs.length;
-                    
-                targetSet.songs.splice(targetIndex, 0, {
-                    songId: movedSong.songId,
-                    setNumber: parseInt(targetSet.id.split('-')[1] || '1', 10),
-                    position: targetIndex,
-                    isPlayBookActive: movedSong.isPlayBookActive || true,
-                    transitionNote: movedSong.transitionNote || ''
-                });
-        
-                // Update positions for affected sets
-                [sourceSet, targetSet].forEach(set => {
-                    set.songs = set.songs.map((s, i) => ({
-                        ...s,
-                        position: i
-                    }));
-                });
-    
-                // Update Firebase and local state
-                await updateSetlistSets(activeBand.id, setlist.id, newSets);
-                updateSetlist({
-                    ...setlist,
-                    sets: newSets
-                });
-            }
-      
+            targetSet.songs.splice(targetIndex, 0, {
+                ...movedSong,
+                setNumber: parseInt(targetSet.id.split('-')[1] || '1', 10),
+                position: targetIndex,
+                segueIntoNext: false  // Reset segue on move
+            });
+
+            [sourceSet, targetSet].forEach(set => {
+                set.songs = set.songs.map((s, i) => ({
+                    ...s,
+                    position: i
+                }));
+            });
+
+            await updateSetlistSets(activeBand.id, setlist.id, newSets);
+            updateSetlist({
+                ...setlist,
+                sets: newSets
+            });
         } catch (error) {
             console.error('Error updating setlist:', error);
             toast.error('Failed to update setlist');
@@ -206,9 +206,37 @@ function SetlistContent() {
                                 songs={setlist.songDetails || {}}
                                 isOver={activeSetId === set.id}
                                 dropPosition={dropPosition}
+                                onSongUpdate={async (setId, updatedSongs) => {
+                                    if (!activeBand?.id || !setlist) return;
+                                    try {
+                                        const newSets = setlist.sets.map(s =>
+                                            s.id === setId ? { ...s, songs: updatedSongs } : s
+                                        );
+                                        await updateSetlistSets(activeBand.id, setlist.id, newSets);
+                                        updateSetlist({
+                                            ...setlist,
+                                            sets: newSets
+                                        });
+                                    } catch (error) {
+                                        console.error('Error updating setlist:', error);
+                                        toast.error('Failed to update setlist');
+                                    }
+                                }}
                             />
                         ))}
                     </div>
+
+                    <DragOverlay>
+                        {activeId && activeSong && (
+                            <SetlistSongCard
+                                id={activeId}
+                                songId={activeId}
+                                song={activeSong}
+                                index={-1}
+                                setId=""
+                            />
+                        )}
+                    </DragOverlay>
                 </DndContext>
             </div>
         </div>

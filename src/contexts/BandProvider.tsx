@@ -30,10 +30,20 @@ interface BandContextType extends BandState {
 
 const BandContext = createContext<BandContextType | undefined>(undefined);
 
-const PROTECTED_ROUTES = ['/bands/[bandId]'];
-const EXCLUDED_ROUTES = ['/god'];
+const PROTECTED_ROUTES = [
+  '/bands/[bandId]/setlists',
+  '/bands/[bandId]/songs',
+  '/bands/[bandId]/playbook',
+  '/bands/[bandId]/settings',
+  '/bands/[bandId]/media',
+  '/bands/[bandId]/events'
+];
+
+const EXCLUDED_ROUTES = ['/god', '/bands/create'];  // Add create to excluded routes
 
 export function BandProvider({ children }: { children: React.ReactNode }) {
+  console.log('BandProvider Render');
+
   const router = useRouter();
   const pathname = usePathname();
   const { user, requireProfile } = useAuth();
@@ -49,9 +59,14 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
   });
 
   const isProtectedRoute = pathname ? 
-  PROTECTED_ROUTES.some(route => pathname.startsWith(route.replace('[bandId]', ''))) && 
-  !EXCLUDED_ROUTES.includes(pathname) : 
+  PROTECTED_ROUTES.some(route => {
+    const basePath = route.replace('[bandId]', '');
+    return pathname.startsWith(basePath);
+  }) && 
+  !EXCLUDED_ROUTES.some(route => pathname.startsWith(route)) : 
   false;
+
+  console.log('Route Check:', { pathname, isProtectedRoute, PROTECTED_ROUTES, EXCLUDED_ROUTES });
 
   // Computed ready state
   const isReady = !state.isLoadingBands && 
@@ -59,6 +74,8 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
 
   // Load available bands
   const loadBands = useCallback(async () => {
+    console.log('Loading Bands:', { userId: user?.uid });
+
     if (!user) {
       setState(prev => ({
         ...prev,
@@ -76,6 +93,8 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
       setState(prev => ({ ...prev, isLoadingBands: true, error: null }));
       const userBands = await getUserBands(user.uid);
       
+      console.log('Bands Loaded:', { bandCount: userBands.length });
+
       setState(prev => ({
         ...prev,
         availableBands: userBands,
@@ -93,6 +112,12 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
 
   // Select active band
   const selectBand = useCallback(async (bandId: string) => {
+    console.log('🎸 BandProvider - selectBand Start:', {
+      bandId,
+      currentPath: pathname
+    });
+
+
     if (!user) return;
 
     if (!requireProfile()) {
@@ -110,6 +135,12 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
       const role = await getBandMemberRole(bandId, user.uid);
       const members = await getBandMembers(bandId);
       
+      console.log('Band Selected:', { 
+        bandId, 
+        role,
+        memberCount: members.length 
+      });
+
       setState(prev => ({
         ...prev,
         activeBand: band,
@@ -134,6 +165,7 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
   }, [user, requireProfile]);
 
   const clearActiveBand = useCallback(() => {
+    console.log('Clearing Active Band');
     setState(prev => ({
       ...prev,
       activeBand: null,
@@ -152,12 +184,25 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
   }, [loadBands, user]);
 
   // Route protection and band restoration
-  useEffect(() => {
+useEffect(() => {
+  console.log('🎸 BandProvider - Route Protection Check:', {
+    pathname,
+    isProtectedRoute,
+    isLoadingBands: state.isLoadingBands,
+    hasActiveBand: !!state.activeBand,
+    lastActiveBandId: localStorage.getItem('lastActiveBandId')
+  });
+
     if (!isProtectedRoute || state.isLoadingBands) return;
 
     const handleProtectedRoute = async () => {
       if (!state.activeBand) {
         const lastActiveBandId = localStorage.getItem('lastActiveBandId');
+        console.log('Handling Protected Route:', {
+          lastActiveBandId,
+          availableBands: state.availableBands.map(b => b.id)
+        });
+
         if (lastActiveBandId && state.availableBands.some(band => band.id === lastActiveBandId)) {
           try {
             await selectBand(lastActiveBandId);
@@ -166,6 +211,7 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
             router.push('/home');
           }
         } else {
+          console.log('Redirecting to home - no valid band');
           router.push('/home');
         }
       }

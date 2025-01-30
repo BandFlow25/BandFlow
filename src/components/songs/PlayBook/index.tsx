@@ -1,18 +1,20 @@
-//src\components\songs\PlayBook\index.tsx
+// components/songs/PlayBook/index.tsx
 import { useMemo, useState } from 'react';
 import { useSongs } from '@/contexts/SongProvider';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PlayBookSongCard } from '@/components/songs/SongCard/PlayBookSongCard';
-//import  CreateSetlistModal  from '@/components/songs/Modals/CreateSetlistModal';
 import type { BandSong } from '@/lib/types/song';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Music } from 'lucide-react';
+import { useBand } from '@/contexts/BandProvider';
 
 export function PlayBookList() {
   const { songs, isLoading, error } = useSongs();
+  const { activeBand } = useBand();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSongs, setSelectedSongs] = useState<BandSong[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const playBookSongs = useMemo(() => {
     let filtered = songs.filter(song => song.status === 'PLAYBOOK');
@@ -38,6 +40,11 @@ export function PlayBookList() {
       }
       return [...prev, song];
     });
+  };
+
+  const handleCreateSetlist = () => {
+    const encodedSongs = encodeURIComponent(JSON.stringify(selectedSongs));
+    router.push(`/bands/${activeBand?.id}/setlists/create?songs=${encodedSongs}`);
   };
 
   return (
@@ -76,7 +83,7 @@ export function PlayBookList() {
             {selectedSongs.length > 0 && (
               <Button
                 size="sm"
-                onClick={() => setShowCreateModal(true)}
+                onClick={handleCreateSetlist}
                 className="bg-orange-500"
               >
                 Create Setlist
@@ -125,18 +132,6 @@ export function PlayBookList() {
           </div>
         )}
       </div>
-
-      {/* Create Setlist Modal
-      {showCreateModal && (
-        <CreateSetlistModal
-          onClose={() => {
-            setShowCreateModal(false);
-            setSelectedSongs([]);
-            setIsMultiSelectMode(false);
-          }}
-          selectedSongs={selectedSongs}
-        />
-      )} */}
     </div>
   );
 }

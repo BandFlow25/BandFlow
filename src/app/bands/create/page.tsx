@@ -1,4 +1,3 @@
-//src\app\bands\create\page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +6,8 @@ import { useAuth } from '@/contexts/AuthProvider';
 import { createBand } from '@/lib/services/firebase/bands';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+
+console.log('Create band page component loading');
 
 export default function CreateBandPage() {
   const router = useRouter();
@@ -23,22 +24,48 @@ export default function CreateBandPage() {
     youtube: ''
   });
 
-  // Check profile requirement once on mount
-  const { validateProfile } = useAuth();
+  // Debug renders and auth state
+  console.log('CreateBandPage render:', { 
+    user: !!user, 
+    isLoading,
+    hasError: !!error 
+  });
 
   useEffect(() => {
-    validateProfile();
-  }, []);
+    console.log('Profile check effect running', {
+      hasUser: !!user,
+      requireProfileExists: !!requireProfile
+    });
+
+    if (!user) {
+      console.log('No user found, redirecting to login');
+      router.push('/login');
+      return;
+    }
+
+    const profileCheckResult = requireProfile();
+    console.log('Profile check result:', profileCheckResult);
+
+  }, [user, requireProfile, router]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      console.log('Submit attempted without user');
+      return;
+    }
   
     setIsLoading(true);
     setError('');
   
     try {
- 
+      console.log('Attempting band creation with data:', {
+        name: formData.name,
+        hasDescription: !!formData.description,
+        hasImage: !!formData.imageUrl,
+        hasSocialLinks: !!(formData.facebook || formData.instagram || formData.twitter || formData.youtube)
+      });
+
       const bandData = {
         name: formData.name,
         description: formData.description,
@@ -52,10 +79,10 @@ export default function CreateBandPage() {
       };
   
       await createBand(user.uid, bandData);
-
+      console.log('Band created successfully');
       router.push('/home');
     } catch (error) {
-      console.error('Detailed error in handleSubmit:', error);
+      console.error('Band creation error:', error);
       if (error instanceof Error) {
         setError(error.message || 'Failed to create band');
       } else {

@@ -9,6 +9,8 @@ import Link from 'next/link';
 import { useBand } from '@/contexts/BandProvider';
 import type { Band } from '@/lib/types/band';
 
+console.log('Rendering home page component');
+
 export default function HomePage() {
   const router = useRouter();
   const { user, profile, validateProfile, logout } = useAuth();
@@ -38,8 +40,16 @@ export default function HomePage() {
   }, [clearActiveBand]);
 
   const handleBandSelect = async (bandId: string) => {
+    const pathname = window.location.pathname;
+    console.log('🏠 Home Page - Band Select:', {
+      bandId,
+      currentPath: pathname,
+      nextPath: `/bands/${bandId}`
+    });
     await selectBand(bandId);
+    console.log('🏠 Home Page - After Band Select, before route push');
     router.push(`/bands/${bandId}`);
+    console.log('🏠 Home Page - After route push');
   };
 
   const handleLogout = async () => {
@@ -108,11 +118,18 @@ export default function HomePage() {
           <h3 className="text-2xl font-normal text-white mb-2">No bands yet</h3>
           <p className="text-gray-400 mb-8">Create your first band to get started</p>
           <Link
-            href="/bands/create"
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg inline-flex items-center text-lg font-normal"
+            href={'/bands/create'}
+            onClick={(e) => {
+              console.log('Create band link clicked');
+            }}
+            className="bg-gray-800 rounded-lg flex items-center justify-center h-[242px] group hover:bg-gray-700 transition-colors"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            Create New Band
+            <div className="text-center">
+              <Plus className="w-8 h-8 mb-2 text-gray-400 group-hover:text-orange-500 transition-colors" />
+              <span className="text-gray-400 group-hover:text-white transition-colors">
+                Create New Band
+              </span>
+            </div>
           </Link>
         </div>
       ) : (

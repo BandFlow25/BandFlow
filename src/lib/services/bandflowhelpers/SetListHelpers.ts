@@ -1,5 +1,6 @@
 // lib/services/bandflowhelpers/SetListHelpers.ts
 import type { BandSong } from '@/lib/types/song';
+import type { SetlistSong } from '@/lib/types/setlist';
 
 export function DurationtoMinSec(seconds: number, includeSeconds = true): string {
   if (typeof seconds !== 'number' || isNaN(seconds)) {
@@ -29,21 +30,20 @@ export function DurationtoMinSec(seconds: number, includeSeconds = true): string
     : `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-// Simplified to just sum the seconds
-export const calculateSetDurationInSeconds = (songs: (BandSong | undefined)[]): number => {
-  return songs.reduce((total, song) => {
+export const calculateSetDurationInSeconds = (songs: (BandSong | undefined)[], setlistSongs: SetlistSong[]): number => {
+  return songs.reduce((total, song, index) => {
     if (!song?.metadata?.duration) return total;
-    return total + parseInt(song.metadata.duration, 10);
+    const setlistSong = setlistSongs[index];
+    // Handle both null and undefined cases
+    const setupTimeSeconds = setlistSong?.setupTime != null ? setlistSong.setupTime * 60 : 0;
+    return total + parseInt(song.metadata.duration, 10) + setupTimeSeconds;
   }, 0);
 };
 
-// Simplified duration info with clearer calculation
 export const getSetDurationInfo = (durationSeconds: number, targetMinutes: number) => {
   const durationMinutes = durationSeconds / 60;
   const variance = Math.abs(durationMinutes - targetMinutes);
   const variancePercent = (variance / targetMinutes) * 100;
-  
-
   
   let color;
   if (variancePercent <= 8) {

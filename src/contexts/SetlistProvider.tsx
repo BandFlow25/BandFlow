@@ -1,12 +1,11 @@
 // src/contexts/SetlistProvider.tsx
-'use client';
-
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { useBand } from './BandProvider';
 import { getSetlist, updateSetlistSets } from '@/lib/services/firebase/setlists';
 import type { Setlist } from '@/lib/types/setlist';
 import type { BandSong } from '@/lib/types/song';
+import { nanoid } from 'nanoid';
 
 interface SetlistContextType {
   setlist: Setlist | null;
@@ -27,31 +26,74 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Get setlistId from pathname
+  // Get setlistId from pathname with improved handling
   const getSetlistId = () => {
-    if (pathname?.includes('/setlists/')) {
-      return pathname.split('/setlists/')[1]?.split('/')[0];
+    console.log('🎵 GetSetlistId Check:', {
+      pathname,
+      segments: pathname?.split('/'),
+      isListView: pathname?.endsWith('/setlists')
+    });
+  
+    // Early returns for special cases
+    if (!pathname) return null;
+    if (pathname.endsWith('/setlists')) {
+      console.log('🎵 On setlist list view - should not try to load individual setlist');
+      return null;
+    }
+    if (pathname.endsWith('/create')) {
+      console.log('🎵 On create view - no setlist to load');
+      return null;
+    }
+  
+    // Extract setlist ID from path
+    if (pathname.includes('/setlists/')) {
+      const segments = pathname.split('/setlists/')[1]?.split('/');
+      console.log('🎵 Found setlist segments:', segments);
+      return segments ? segments[0] : null;
     }
     return null;
   };
 
-  // Load or refresh setlist
+  // Load or refresh setlist with improved error handling
   const loadSetlist = async () => {
     const setlistId = getSetlistId();
-    if (!setlistId || !activeBand?.id) {
+  
+    console.log('🎵 LoadSetlist:', {
+      setlistId,
+      activeBandId: activeBand?.id,
+      pathname,
+      isListView: pathname?.endsWith('/setlists')
+    });
+  
+    // Handle special cases where we don't need to load a setlist
+    if (!setlistId || !activeBand?.id || 
+        pathname?.endsWith('/setlists') || 
+        pathname?.endsWith('/create')) {
+      console.log('🎵 No setlist to load:', { 
+        setlistId, 
+        activeBandId: activeBand?.id,
+        pathname
+      });
       setIsLoading(false);
       return;
     }
-
+  
     try {
       setIsLoading(true);
       setError(null);
       const data = await getSetlist(activeBand.id, setlistId);
-      if (!data) throw new Error('Setlist not found');
-      setSetlist(data);
+      console.log('🎵 Loaded setlist data:', data);
+      
+      if (!data) {
+        setError(new Error('Setlist not found'));
+        setSetlist(null);
+      } else {
+        setSetlist(data);
+      }
     } catch (err) {
-      console.error('Error loading setlist:', err);
+      console.error('🎵 Error loading setlist:', err);
       setError(err instanceof Error ? err : new Error('Failed to load setlist'));
+      setSetlist(null);
     } finally {
       setIsLoading(false);
     }
@@ -62,17 +104,14 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
     loadSetlist();
   }, [activeBand?.id, pathname]);
 
-  // Update local setlist state
   const updateSetlist = (newSetlist: Setlist) => {
     setSetlist(newSetlist);
   };
 
-  // Refresh setlist data
   const refreshSetlist = async () => {
     await loadSetlist();
   };
 
-  // Add a song to a specific set
   const addSongToSet = async (song: BandSong, targetSetId: string) => {
     if (!setlist || !activeBand?.id) {
       throw new Error('No active setlist or band');
@@ -83,8 +122,8 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Target set not found');
     }
 
-    // Create new setlist song entry
     const newSetlistSong = {
+      id: nanoid(),
       songId: song.id,
       setNumber: parseInt(targetSet.id.split('-')[1] || '1', 10),
       position: targetSet.songs.length,
@@ -92,7 +131,6 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
       transitionNote: ''
     };
 
-    // Update sets with new song
     const newSets = setlist.sets.map(set => {
       if (set.id === targetSetId) {
         return {
@@ -104,10 +142,7 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
-      // Update Firebase
       await updateSetlistSets(activeBand.id, setlist.id, newSets);
-
-      // Update local state
       const updatedSetlist = {
         ...setlist,
         sets: newSets,
@@ -116,7 +151,6 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
           [song.id]: song
         }
       };
-
       setSetlist(updatedSetlist);
     } catch (error) {
       console.error('Error adding song to set:', error);
@@ -124,7 +158,7 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const contextValue: SetlistContextType = {
+  const value = {
     setlist,
     isLoading,
     error,
@@ -134,7 +168,7 @@ export function SetlistProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SetlistContext.Provider value={contextValue}>
+    <SetlistContext.Provider value={value}>
       {children}
     </SetlistContext.Provider>
   );

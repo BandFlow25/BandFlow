@@ -13,11 +13,14 @@ export interface DropPosition {
 }
 
 export interface SetlistSong {
-  songId: string;
+  id: string;         // Unique instance ID
+  songId: string;     // Reference to the original song
   setNumber: number;
   position: number;
   isPlayBookActive?: boolean;
+  segueIntoNext?: boolean;
   transitionNote?: string;
+  setupTime: number | null;  // Changed to number | null from undefined
 }
 
 export interface SetlistSet {

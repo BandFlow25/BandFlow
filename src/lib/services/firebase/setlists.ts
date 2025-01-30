@@ -15,12 +15,13 @@ import {
   import { COLLECTIONS } from '@/lib/constants';
   import type { BandSong } from '@/lib/types/song';
   import type { Setlist, SetlistSet, SetlistFormat, SetlistSong } from '@/lib/types/setlist';
+  import { nanoid } from 'nanoid';
   
   const getSetlistsCollection = (bandId: string) => 
     collection(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.SETLISTS);
   
   /**
-   * Creates a new setlist
+   * Creates a new setlist 
    */
   export async function createSetlist(
     bandId: string,
@@ -71,9 +72,11 @@ import {
    
     // Add song to current set
     currentSet.songs.push({
-      songId: song.id,
+      id: nanoid(),       // Generate unique instance ID
+      songId: song.id,    // Reference to original song
       setNumber: currentSetIndex + 1,
-      position: index
+      position: index,
+      isPlayBookActive: true
     });
     currentSetDuration += songDuration;
    });
@@ -101,12 +104,41 @@ import {
     const q = query(setlistsRef, orderBy('updatedAt', 'desc'));
     const snapshot = await getDocs(q);
   
-    return snapshot.docs.map(doc => ({
+    // Get all setlists with their basic data
+    const setlists = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Setlist[];
-  }
   
+    // Load song details for each setlist
+    const setlistsWithDetails = await Promise.all(setlists.map(async (setlist) => {
+      const songIds = setlist.sets
+        .flatMap(set => set.songs)
+        .map(song => song.songId);
+        
+      const uniqueSongIds = [...new Set(songIds)];
+      
+      // Load song details including status
+      const songDetails: Record<string, BandSong> = {};
+      for (const songId of uniqueSongIds) {
+        const songRef = doc(db, COLLECTIONS.BANDS, bandId, COLLECTIONS.BAND_SONGS, songId);
+        const songSnap = await getDoc(songRef);
+        if (songSnap.exists()) {
+          songDetails[songId] = { 
+            id: songSnap.id,
+            ...songSnap.data()
+          } as BandSong;
+        }
+      }
+  
+      return {
+        ...setlist,
+        songDetails
+      };
+    }));
+  
+    return setlistsWithDetails;
+  }
   /**
    * Gets a specific setlist by ID
    */
