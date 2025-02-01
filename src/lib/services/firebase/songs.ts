@@ -303,3 +303,24 @@ export async function deleteBaseSongWithCascade(baseSongId: string) {
     throw error;
   }
  }
+
+ export async function updateBandSong(
+  bandId: string,  // Add this parameter
+  songId: string,
+  updates: Partial<BandSong>
+): Promise<void> {
+  if (!songId || !bandId) {
+    throw new Error("Missing required parameters");
+  }
+
+  try {
+    const songRef = doc(getBandSongsCollection(bandId), songId);
+    await updateDoc(songRef, {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating song:', error);
+    throw error;
+  }
+}

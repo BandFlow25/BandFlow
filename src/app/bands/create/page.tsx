@@ -7,7 +7,6 @@ import { createBand } from '@/lib/services/firebase/bands';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-console.log('Create band page component loading');
 
 export default function CreateBandPage() {
   const router = useRouter();

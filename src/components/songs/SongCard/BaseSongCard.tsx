@@ -1,4 +1,4 @@
-// components/songs/SongCard/BaseSongCardV2.tsx
+// components/songs/SongCard/BaseSongCard.tsx
 
 import { useState, useMemo } from 'react';
 import {
@@ -8,7 +8,6 @@ import {
   ThumbsDown,
   Clock,
   ListMusic,
-  Flame,
   MoreVertical,
   AlertCircle,
   CheckCircle2
@@ -238,7 +237,7 @@ export function BaseSongCard({
                 </div>
               ) : song.status === SONG_STATUS.REVIEW ? (
                 <div className="flex items-center space-x-1">
-                  {isHighScore && <Flame className="w-6 h-6 text-orange-400 animate-bounce" />}
+                  {isHighScore && <span className="text-orange-400 text-xl animate-bounce">🔥</span>}
                   {hasZeroVote && <ThumbsDown className="w-5 h-5 text-red-400 animate-pulse" />}
                   <span className={`text-sm font-medium ${isHighScore ? 'text-orange-400' :
                     hasZeroVote ? 'text-red-400' : 'text-gray-400'

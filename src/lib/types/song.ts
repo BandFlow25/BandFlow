@@ -93,12 +93,52 @@ export interface BaseSong {
 }
 
 // Band-specific song type - extends BaseSong with band-related data
-export interface BandSong extends BaseSong {
-  baseSongId: string;       // Reference to original BaseSong
-  bandId: string;          // ID of the band
-  status: SongStatus;      // Current status in the band's workflow
-  notes?: string;          // Band-specific notes
-  votes?: VoteMap;         // Member voting records
-  votingMemberCount?: number;  // Number of members who voted
-  ragStatus?: Record<string, RAGVote>;  // Member RAG status votes
+export interface BandSong {
+  // All existing fields remain unchanged
+  id: string;
+  title: string;
+  artist: string;
+  previewUrl: string;
+  thumbnail?: string;
+  metadata?: {
+    bpm?: number;
+    key?: string;
+    duration?: string;
+  };
+  metadataStatus?: 'pending' | 'complete' | 'failed';
+  spotifyUid?: string;
+  fullUrl?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  baseSongId: string;
+  bandId: string;
+  status: SongStatus;
+  notes?: string;
+  votes?: VoteMap;
+  votingMemberCount?: number;
+  ragStatus?: Record<string, RAGVote>;
+
+  // New optional fields
+  localTitle?: string | undefined;
+  documents?: Record<string, SongDocument[]>;  // Keyed by userId
+  songNotes?: Record<string, SongNotes>;       // Keyed by userId
+  songStructure?: string; // Holds the entire structure as a block of text
 }
+
+// New interfaces for documents
+export interface SongDocument {
+  type: 'lyrics' | 'guitar' | 'drums' | 'keys' | 'other';
+  url: string;
+  isPersonal: boolean;
+  lastUpdated: Timestamp;
+  gigModeDefault?: boolean;
+}
+
+export interface SongNotes {
+  personal?: string;
+  band?: string;
+  lastUpdated: Timestamp;
+}
+
+export type DocumentType = 'lyrics' | 'guitar' | 'drums' | 'keys' | 'other';
+

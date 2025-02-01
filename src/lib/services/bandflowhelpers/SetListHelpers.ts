@@ -61,3 +61,19 @@ export const getSetDurationInfo = (durationSeconds: number, targetMinutes: numbe
     variancePercent
   };
 };
+
+export function MinSecToDuration(minSec: string): number | null {
+  // Handle both . and : as separators
+  const parts = minSec.replace('.', ':').split(':');
+  
+  if (parts.length !== 2) return null;
+  
+  const minutes = parseInt(parts[0] || '0');
+  const seconds = parseInt(parts[1] || '0');
+  
+  if (isNaN(minutes) || isNaN(seconds)) return null;
+  if (seconds >= 60) return null;  // Invalid seconds value
+  if (minutes < 0 || seconds < 0) return null;  // No negative values
+  
+  return (minutes * 60) + seconds;
+}

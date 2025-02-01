@@ -66,7 +66,6 @@ export function BandProvider({ children }: { children: React.ReactNode }) {
   !EXCLUDED_ROUTES.some(route => pathname.startsWith(route)) : 
   false;
 
-  console.log('Route Check:', { pathname, isProtectedRoute, PROTECTED_ROUTES, EXCLUDED_ROUTES });
 
   // Computed ready state
   const isReady = !state.isLoadingBands && 

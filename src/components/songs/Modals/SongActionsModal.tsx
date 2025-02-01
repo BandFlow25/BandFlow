@@ -14,8 +14,8 @@ import {
   Ban,
   AlertTriangle,
   CheckCircle2,
-  AlertCircle,
-  Flame
+  AlertCircle
+  
 } from 'lucide-react';
 import type { BandSong, RAGStatus, SongStatus } from '@/lib/types/song';
 import { SONG_STATUS } from '@/lib/types/song';
@@ -190,7 +190,7 @@ export function SongActionsModal({
                   {isHighScore ? (
                     <span className="flex items-center justify-center gap-2">
                       Great score!
-                      <Flame className="w-6 h-6 text-orange-400 animate-bounce" />
+                      <span className="text-orange-400 text-xl animate-bounce">🔥</span>
                     </span>
                   ) : 'Scores are in!'}
                 </h3>
