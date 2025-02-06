@@ -12,6 +12,8 @@ const config: Config = {
         background: "var(--background)",
       },
       colors: {
+        'yellow-500': '#fbbf24',
+        'purple-500': '#a855f7',
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: "var(--card)",
@@ -68,6 +70,11 @@ const config: Config = {
       },
     },
   },
+  safelist: [
+    'bg-purple-500', 'bg-violet-500', 'bg-indigo-500',
+    'bg-fuchsia-500', 'bg-pink-500', 'bg-cyan-500',
+    'text-purple-500', 'text-violet-500', 'text-indigo-500',
+  ],
   plugins: [],
 } satisfies Config;
 

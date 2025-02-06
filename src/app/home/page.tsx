@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeProvider';
 import Link from 'next/link';
+import { BndyLogo } from '@/components/ui/bndylogo';
 import { Settings, Plus, Music } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthProvider';
 import { useBand } from '@/contexts/BandProvider';
@@ -61,8 +62,12 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground px-6 py-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-      <h1 className="text-2xl md:text-3xl text-white">Welcome to <span className="bndy-font">bndy</span></h1>
-        
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl text-white">Welcome to</h1>
+          <div className="text-orange-500 w-24 md:w-32">
+            <BndyLogo />
+          </div>
+        </div>
         <div className="flex items-center gap-4 mt-4 sm:mt-0">
           <span className="text-secondary-foreground">
             {profile?.displayName || user.email}

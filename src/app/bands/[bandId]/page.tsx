@@ -81,7 +81,7 @@ export default function BandPage() {
   }
 
   return (
-    <PageLayout title="bndy">
+    <PageLayout title="">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-4">
         {sections.map((section) => (
           <Link key={section.title} href={`/bands/${activeBand.id}/${section.href}`} className="group">

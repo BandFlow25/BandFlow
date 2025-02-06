@@ -65,7 +65,7 @@
 }
 
 .landing-hero .logo {
-  @apply w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center mb-8;
+  @apply w-16 h-16 rounded-full flex items-center justify-center mb-8;
 }
 
 .landing-hero h1 {
@@ -141,7 +141,7 @@
   }
 
   .button-primary {
-    @apply button-base bg-orange-500 text-white hover:bg-orange-600 w-full;
+    @apply rounded-2xl px-6 py-2 font-medium transition-colors;
   }
 
   /* Layout Components */
