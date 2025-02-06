@@ -1,14 +1,14 @@
 I0106 15:53:08.795585    8548 load.go:37] Reloading schema and connectors...
-I0106 15:53:08.801706    8548 control.go:45] [engine.Service /emulator/bandflow25 e816] UpdateSchema(): done sources: schema\schema.gql [1384B] 
-I0106 15:53:08.805009    8548 control.go:73] [engine.Service /emulator/bandflow25 e816] UpdateConnector(default): done sources: connector\mutations.gql [1163B] connector\queries.gql [1855B] 
-I0106 15:53:08.814837    8548 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "C:\\BandFlow25\\bandflow25\\dataconnect-generated\\js\\default-connector"
-I0106 15:53:08.816060    8548 collector.go:107] schema extensions wrote into "C:\\BandFlow25\\bandflow25\\dataconnect\\.dataconnect\\schema"
+I0106 15:53:08.801706    8548 control.go:45] [engine.Service /emulator/bndy e816] UpdateSchema(): done sources: schema\schema.gql [1384B] 
+I0106 15:53:08.805009    8548 control.go:73] [engine.Service /emulator/bndy e816] UpdateConnector(default): done sources: connector\mutations.gql [1163B] connector\queries.gql [1855B] 
+I0106 15:53:08.814837    8548 codegen.go:82] [connector "default" javascriptSdk] Generating sources into "C:\\bndy\\bndy\\dataconnect-generated\\js\\default-connector"
+I0106 15:53:08.816060    8548 collector.go:107] schema extensions wrote into "C:\\bndy\\bndy\\dataconnect\\.dataconnect\\schema"
 Generated sources: prelude.gql [65151B] 
-I0106 15:53:08.817141    8548 collector.go:107] connector "default" javascriptSdk wrote into "C:\\BandFlow25\\bandflow25\\dataconnect-generated\\js\\default-connector"
+I0106 15:53:08.817141    8548 collector.go:107] connector "default" javascriptSdk wrote into "C:\\bndy\\bndy\\dataconnect-generated\\js\\default-connector"
 Generated sources: index.cjs.js [224B] package.json [634B] index.d.ts [264B] esm\index.esm.js [183B] esm\package.json [17B] 
 I0106 15:53:08.823865    8548 installsdk.go:76] Running command: C:\Program Files\nodejs\npm.cmd install file:dataconnect-generated\js\default-connector
 I0106 15:53:10.258488    8548 load.go:115] Finished reloading
 I0106 15:53:10.260147    8548 dev.go:95] Listening on address (HTTP + gRPC): 127.0.0.1:9399
 I0106 15:53:10.260734    8548 dev.go:95] Listening on address (HTTP + gRPC): [::1]:9399
-I0106 15:53:11.565318    8548 control.go:45] [engine.Service /emulator/bandflow25 c6f3] UpdateSchema(): done sources: schema\schema.gql [1384B] 
-I0106 15:53:11.565318    8548 control.go:73] [engine.Service /emulator/bandflow25 c6f3] UpdateConnector(default): done sources: connector\mutations.gql [1163B] connector\queries.gql [1855B] 
+I0106 15:53:11.565318    8548 control.go:45] [engine.Service /emulator/bndy c6f3] UpdateSchema(): done sources: schema\schema.gql [1384B] 
+I0106 15:53:11.565318    8548 control.go:73] [engine.Service /emulator/bndy c6f3] UpdateConnector(default): done sources: connector\mutations.gql [1163B] connector\queries.gql [1855B] 

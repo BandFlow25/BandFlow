@@ -5,4 +5,4 @@ Disallow: /bands/
 Disallow: /login
 Disallow: /register
 
-Sitemap: https://bandflow.ai/sitemap.xml
+Sitemap: https://bndy.ai/sitemap.xml

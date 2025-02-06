@@ -1,10 +1,11 @@
 
-// src/components/layout/PageTitleHeader.tsx
+//src/components/layout/PageTitleHeader.tsx
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBand } from '@/contexts/BandProvider';
 import AddSongButton from '@/components/ui/buttons/AddSongButton';
+import Link from 'next/link';
 
 type PageType = 'songs' | 'setlists' | 'media' | 'events';
 
@@ -53,12 +54,12 @@ export function PageTitleHeader({
   };
 
   return (
-    <div className="flex items-center justify-between px-16 h-14 bg-gray-900 border-b border-gray-800">
+    <div className="flex items-center justify-between px-16 h-14 bg-background border-b border-border">
       <div className="flex items-baseline gap-2">
         {showDropdown ? (
           <div className="relative group">
             <button
-              className="flex items-center gap-2 text-xl font-semibold hover:text-orange-500 transition-colors"
+              className="flex items-center gap-2 text-xl font-semibold text-foreground hover:text-primary transition-colors"
               onClick={() => {
                 const menu = document.getElementById('view-menu');
                 menu?.classList.toggle('hidden');
@@ -70,7 +71,7 @@ export function PageTitleHeader({
 
             <div
               id="view-menu"
-              className="absolute hidden top-full left-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-1 min-w-[160px] z-50"
+              className="absolute hidden top-full left-0 mt-1 bg-card rounded-lg shadow-lg py-1 min-w-[160px] z-50"
             >
               {views.map((view) => (
                 <button
@@ -78,7 +79,9 @@ export function PageTitleHeader({
                   onClick={() => handleViewChange(view.value)}
                   className={cn(
                     "w-full text-left px-4 py-2 text-sm",
-                    currentView === view.value ? "bg-orange-500 text-white" : "text-gray-300 hover:bg-gray-700"
+                    currentView === view.value 
+                      ? "bg-primary text-primary-foreground" 
+                      : "text-foreground hover:bg-secondary"
                   )}
                 >
                   {view.label}
@@ -87,14 +90,29 @@ export function PageTitleHeader({
             </div>
           </div>
         ) : (
-          <h1 className="text-xl font-semibold text-white">{title}</h1>
+          <h1 className="bndy-font">{title}</h1>
         )}
         {typeof count === 'number' && (
-          <span className="text-sm text-gray-400">({count} songs)</span>
+          <span className="text-sm text-secondary">({count} songs)</span>
         )}
       </div>
 
-      {pageType === 'songs' && <AddSongButton />}
+      <div className="flex items-center gap-2">
+        {/* Home Button */}
+        {activeBand && (
+          <Link 
+            href={`/bands/${activeBand.id}`} 
+            className=" h-14 border-gray-800 flex items-center px-2 hover:bg-gray-800/50"
+          >
+            <div className="p-0 rounded-lg">
+              <Home className="w-6 h-6 text-gray-400" />
+            </div>
+          </Link>
+        )}
+        
+        {/* Add Songs Button */}
+        {pageType === 'songs' && <AddSongButton />}
+      </div>
     </div>
   );
 }

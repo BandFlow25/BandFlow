@@ -1,148 +1,104 @@
 // src/app/bands/[bandId]/page.tsx 
 'use client';
- 
+
+// Import necessary hooks and utilities from React and Next.js
 import { useEffect, useState } from 'react';
 import { useBand } from '@/contexts/BandProvider';
-import { SongHelpers } from '@/lib/services/bandflowhelpers/SongHelpers';
+import { useTheme } from '@/contexts/ThemeProvider';
+import { SongHelpers } from '@/lib/services/bndyhelpers/SongHelpers';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { useParams } from 'next/navigation';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { 
-  BookOpen, GitBranch, Calendar, Wrench, ImageIcon
-} from 'lucide-react';
+import { BookOpen, GitBranch, Calendar, Settings, ImageIcon } from 'lucide-react';
+
+// Define sections for different features of the band page
+const sections = [
+  {
+    title: 'Play Book & Setlists',
+    description: "Create and manage setlists from your performance-ready songs",
+    icon: BookOpen,
+    href: 'playbook',
+    gradient: 'from-blue-500 to-purple-500', // Gradient styling for visual appeal
+    countKey: 'playbook'
+  },
+  {
+    title: 'Song Pipeline',
+    description: "Songs being worked on by the band",
+    icon: GitBranch,
+    href: 'songs',
+    gradient: 'from-orange-500 to-pink-500',
+    countKey: 'active'
+  },
+  {
+    title: 'Practice List',
+    description: "Manage songs that you are practicing & getting gig ready",
+    icon: Settings,
+    href: 'practice',
+    gradient: 'from-yellow-400 to-orange-500',
+    countKey: 'practice'
+  },
+  {
+    title: 'Events',
+    description: "Manage gigs, rehearsals and setlist planning",
+    icon: Calendar,
+    href: 'events',
+    gradient: 'from-purple-500 to-indigo-500'
+  },
+  {
+    title: 'Media',
+    description: "Access band photos, videos, and files",
+    icon: ImageIcon,
+    href: 'media',
+    gradient: 'from-green-500 to-emerald-500'
+  }
+];
 
 export default function BandPage() {
-  const { activeBand, isReady, error } = useBand();
-  const params = useParams();
-  const [songCounts, setSongCounts] = useState({
-    total: 0,
-    active: 0,
-    suggested: 0,
-    review: 0,
-    practice: 0,
-    playbook: 0,
-    parked: 0,
-    discarded: 0
-  });
+  // Retrieve active band information and theme settings
+  const { activeBand, isReady } = useBand();
   
+  // State to store song counts for different categories
+  const [songCounts, setSongCounts] = useState<Record<string, number>>({});
+
+  // Effect to load song counts when active band changes
   useEffect(() => {
     const loadSongCounts = async () => {
       if (activeBand?.id) {
         const counts = await SongHelpers.getAllSongCounts(activeBand.id);
-        setSongCounts(counts);
+        setSongCounts(counts || {});
       }
     };
-    
     loadSongCounts();
   }, [activeBand?.id]);
 
-  // Single loading check using isReady
-  if (!isReady) {
+  // Display loading screen if data is not ready or active band is not available
+  if (!isReady || !activeBand) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading band...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-xl text-red-500">{error}</div>
-      </div>
-    );
-  }
-
-  if (!activeBand) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-xl">Band not found</div>
-      </div>
-    );
-  }
-
-  const sections = [
-    {
-      title: `Play Book & Setlists`,
-      description: "Create and manage setlists from your performance-ready songs",
-      icon: <BookOpen className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/playbook`,
-      count: songCounts.playbook > 0 ? `${songCounts.playbook} songs` : null,
-      color: "bg-blue-500",
-      primary: true
-    },
-    {
-      title: "Song Pipeline",
-      description: "Songs being worked on by the band",
-      icon: <GitBranch className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/songs?view=suggestions`,
-      color: "bg-orange-500",
-      content: (
-        <div className="flex flex-col gap-2 mt-3">
-          <Link 
-            href={`/bands/${activeBand.id}/songs?view=suggestions`}
-            className="text-sm text-orange-400 hover:text-orange-300"
-          >
-            {songCounts.suggested > 0 
-              ? `${songCounts.suggested} songs need votes`
-              : songCounts.review > 0 
-                ? `${songCounts.review} songs in review`
-                : `${songCounts.suggested + songCounts.review} songs in pipeline`}
-          </Link>
-          <Link 
-            href={`/bands/${activeBand.id}/songs?view=practice`}
-            className="text-sm text-gray-400 hover:text-gray-300"
-          >
-            {songCounts.practice} songs in practice
-          </Link>
-        </div>
-      )
-    },
-    {
-      title: `Practice List`,
-      description: "Manage songs that you are practicing & getting gig ready",
-      icon: <Wrench className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/songs?view=practice`,
-      count: songCounts.practice > 0 ? `${songCounts.practice} songs` : null,
-      color: "bg-yellow-400",
-      primary: true
-    },
-    {
-      title: "Events",
-      description: "Manage gigs, rehearsals and setlist planning",
-      icon: <Calendar className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/events`,
-      color: "bg-purple-500"
-    },
-    {
-      title: "Media",
-      description: "Access band photos, videos, and files",
-      icon: <ImageIcon className="w-6 h-6" />,
-      href: `/bands/${activeBand.id}/media`,
-      color: "bg-green-500"
-    }
-  ];
-  
   return (
-    <PageLayout title={`Welcome to Band Flow`}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <PageLayout title="bndy">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-4">
         {sections.map((section) => (
-          <Link
-            key={section.title}
-            href={section.href}
-            className="block p-6 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors group"
-          >
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${section.color} transition-colors`}>
-                {section.icon}
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-1 group-hover:text-orange-500 transition-colors">
-                  {section.title}
-                </h2>
-                <p className="text-sm text-gray-400">
-                  {section.description}
-                </p>
+          <Link key={section.title} href={`/bands/${activeBand.id}/${section.href}`} className="group">
+            <div className="feature-card">
+              <div className="flex items-center gap-4">
+                {/* Section Icon with gradient styling */}
+                <div className={cn("feature-icon", "bg-gradient-to-br", section.gradient, "transform-gpu transition-transform")}>
+                  <section.icon className="w-6 h-6 text-white" />
+                </div>
+                
+                {/* Section Title with Song Count */}
+                <div className="flex-1 min-w-0 p-0">
+                  <h2 className="feature-title truncate text-lg md:text-xl">
+                    {section.title} {section.countKey && songCounts[section.countKey] !== undefined ? `(${songCounts[section.countKey] ?? 0})` : ''}
+                  </h2>
+                  <p className="text-sm text-gray-400">{section.description}</p>
+                </div>
               </div>
             </div>
           </Link>

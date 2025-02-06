@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthProvider';
 import { useBand } from '@/contexts/BandProvider';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { getBandMemberRole } from '@/lib/services/firebase/bands';
 import Link from 'next/link';
@@ -73,7 +74,7 @@ export default function Sidebar() {
       >
         <Image
           src="/bf-logo.png"
-          alt="BandFlow"
+          alt="bndy"
           width={32}
           height={32}
           className="rounded-full"
@@ -91,13 +92,12 @@ export default function Sidebar() {
  isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
 )}>
 {/* Header - Single BF logo that handles both mobile/desktop */}
-{/* Header - Single BF logo that handles both mobile/desktop */}
 <Link 
   href={`/bands/${activeBand.id}`} 
   className="h-14 border-b border-gray-800 flex items-center px-6 hover:bg-gray-800/50"
 >
   <div className="flex-1 pl-8">
-    <h1 className="font-bold text-white">Band Flow 25</h1>
+  <h1 className="bndy-font">bndy</h1>
   </div>
   <div className="p-2 rounded-lg">
     <Home className="w-5 h-5 text-gray-400" />
@@ -152,6 +152,7 @@ export default function Sidebar() {
        >
          <LogOut className="w-5 h-5 text-orange-500" />
        </button>
+       <ThemeToggle />
      </div>
    </div>
  </div>
@@ -160,7 +161,7 @@ export default function Sidebar() {
 <div className="mt-auto border-t border-gray-800">
   <div className="px-6 py-3 flex justify-between items-center">
     <Link href="/about" className="text-sm text-gray-400 hover:text-white">
-      About Band Flow 25
+      About bndy
     </Link>
     <div className="p-2 rounded-lg">
       <Info className="w-5 h-5 text-gray-400" />

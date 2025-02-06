@@ -196,7 +196,7 @@ export default function ProfileSetup() {
               value={formData.displayName}
               onChange={handleChange}
               className={`w-full bg-gray-800 border ${validationErrors.displayName ? 'border-red-500' : 'border-gray-700'} rounded-lg px-4 py-2 text-white`}
-              placeholder="Band Flow display name?"
+              placeholder="bndy display name?"
               required
             />
             {validationErrors.displayName && (

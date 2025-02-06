@@ -11,7 +11,7 @@ interface ShareInviteButtonProps {
 export function ShareInviteButton({ inviteUrl, bandName, className = '' }: ShareInviteButtonProps) {
   const shareToWhatsApp = () => {
     const message = encodeURIComponent(
-      `Join my band "${bandName}" on BandFlow25!\n\n${inviteUrl}`
+      `Join my band "${bandName}" on bndy!\n\n${inviteUrl}`
     );
     const whatsappUrl = `https://wa.me/?text=${message}`;
     window.open(whatsappUrl, '_blank');

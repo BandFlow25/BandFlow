@@ -1,7 +1,7 @@
 {
-    "name": "BandFlow25",
-    "short_name": "BandFlow25",
-    "description": "Managing your cover band song list with BandFlow25!",
+    "name": "bndy",
+    "short_name": "bndy",
+    "description": "Managing your cover band song list with bndy!",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#111827",

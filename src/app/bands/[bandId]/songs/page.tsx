@@ -8,7 +8,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { SongList } from '@/components/songs/SongList';
 import { useSearchParams } from 'next/navigation';
 import { SONG_LIST_TYPES, SongListType } from '@/lib/types/song';
-import { SongHelpers } from '@/lib/services/bandflowhelpers/SongHelpers';
+import { SongHelpers } from '@/lib/services/bndyhelpers/SongHelpers';
 
 function SongsContent() {
   const { songs } = useSongs();

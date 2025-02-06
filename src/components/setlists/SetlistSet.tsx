@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { SetlistSongCard } from './SetlistSongCard';
 import type { BandSong } from '@/lib/types/song';
 import type { SetlistSet as SetlistSetType, DropPosition, SetlistSong } from '@/lib/types/setlist';
-import { calculateSetDurationInSeconds, getSetDurationInfo } from '@/lib/services/bandflowhelpers/SetListHelpers';
+import { calculateSetDurationInSeconds, getSetDurationInfo } from '@/lib/services/bndyhelpers/SetListHelpers';
 
 interface SetlistSetProps {
   set: SetlistSetType;

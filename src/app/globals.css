@@ -1,39 +1,301 @@
-/* src/app/globals.css */
+@font-face {
+  font-family: 'Modulus Pro';
+  src: url('/fonts/ModulusPro-Bold.woff') format('woff'),
+       url('/fonts/ModulusPro-Bold.woff2') format('woff2'),
+       url('/fonts/ModulusPro-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+.bndy-font {
+  font-family: 'Modulus Pro', sans-serif;
+  font-weight: bold;
+  font-size: 3rem !important; /* Force larger size */
+  line-height: 1; /* Avoid extra spacing */
+  @apply text-orange-500; /* Keep color consistent */
+}
+
+.bndy-font-large {
+  font-family: 'Modulus Pro', sans-serif;
+  font-weight: bold;
+  font-size: 5rem; /* Adjust as needed */
+  line-height: 1;
+  @apply text-orange-500; /* Keep color consistent */
+}
+
+.bndy-font-small {
+  font-family: 'Modulus Pro', sans-serif;
+  font-weight: bold;
+  font-size: 1.5em; /* Default text size */
+  color: inherit; /* Inherit the color of surrounding text */
+  @apply text-orange-500; /* Keep color consistent */
+}
+
+.bndy-font-large {
+  font-family: 'Modulus Pro', sans-serif;
+  font-weight: bold;
+  font-size: 4rem;
+  line-height: 1;
+  color: #f97316;
+}
+
+
+
+
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
+/* Landing page styles - Applied before authentication */
 :root {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --accent: 25 95% 53%;  /* Orange for key actions */
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
+  --landing-background: #0F1729;
+  --landing-text: #ffffff;
+  --landing-text-muted: #9ca3af;
+  --landing-card: #1f2937;
 }
 
-body {
-  @apply bg-gray-900 text-gray-100;
-  padding-bottom: env(safe-area-inset-bottom); /* Add this line */
+.landing-page {
+  @apply min-h-screen bg-[var(--landing-background)] px-4 pb-16;
 }
 
+.landing-hero {
+  @apply flex flex-col items-center justify-center text-center py-16;
+}
+
+.landing-hero .logo {
+  @apply w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center mb-8;
+}
+
+.landing-hero h1 {
+  @apply text-4xl font-bold mb-4 text-[var(--landing-text)];
+}
+
+.landing-hero .subtitle {
+  @apply max-w-md mb-8 text-[var(--landing-text-muted)];
+}
+
+.landing-features {
+  @apply max-w-md mx-auto space-y-8;
+}
+
+.landing-features h2 {
+  @apply text-2xl font-bold text-[var(--landing-text)] text-center mb-6;
+}
+
+.landing-features .feature-card {
+  @apply bg-[var(--landing-card)] rounded-2xl p-6;
+}
+
+.landing-features h3 {
+  @apply text-lg font-semibold text-[var(--landing-text)] mb-2;
+}
+
+.landing-features p {
+  @apply text-[var(--landing-text-muted)];
+}
+
+/* Theme Variables - Applied after authentication */
 @layer base {
-  :root {
-    --vh: 1vh;
+  :root[data-theme="light"] {
+    --background: #ffffff;
+    --foreground: #1a202c;
+    --secondary-foreground: #4a5568;
+    --primary: #ed8936;
+    --primary-foreground: #ffffff;
+    --secondary: #edf2f7;
+    --muted: #e2e8f0;
+    --border: #e2e8f0;
+    --card: #ffffff;
+    --card-foreground: #2d3748;
+    --popover: #ffffff;
+    --popover-foreground: #1a202c;
+    --accent: #ed8936;
+    --accent-foreground: #ffffff;
+  }
+
+  :root[data-theme="dark"] {
+    --background: #0F1729;
+    --foreground: #f7fafc;
+    --secondary-foreground: #cbd5e0;
+    --primary: #ed8936;
+    --primary-foreground: #ffffff;
+    --secondary: #2d3748;
+    --muted: #4a5568;
+    --border: #2d3748;
+    --card: #1f2937;
+    --card-foreground: #f7fafc;
+    --popover: #1a202c;
+    --popover-foreground: #f7fafc;
+    --accent: #ed8936;
+    --accent-foreground: #ffffff;
   }
 }
 
-@supports (-webkit-touch-callout: none) {
-  .min-h-screen {
-    min-height: -webkit-fill-available;
+@layer components {
+
+  /* Reusable Button Styles */
+  .button-base {
+    @apply rounded-2xl px-6 py-2 font-medium transition-all duration-200 disabled:opacity-50;
+  }
+
+  .button-primary {
+    @apply button-base bg-orange-500 text-white hover:bg-orange-600 w-full;
+  }
+
+  /* Layout Components */
+  .app-container {
+    @apply h-screen flex flex-col overflow-hidden bg-background;
+  }
+
+  .app-header {
+    @apply flex-none z-30 bg-background border-b border-border h-14;
+  }
+
+  .app-content {
+    @apply flex-1 overflow-y-auto relative bg-background;
+    height: calc(100vh - 3.5rem);
+  }
+
+  .app-content-with-footer {
+    height: calc(100vh - 7rem);
+  }
+
+  .app-footer {
+    @apply flex-none z-30 bg-background border-t border-border h-14;
+  }
+
+  .band-tile {
+    @apply relative overflow-hidden rounded-[1.5rem] p-4 aspect-square;
+    @apply transition-all duration-300 transform;
+    @apply hover:scale-[1.02] hover:border-gray-700/50;
+    @apply backdrop-blur-sm;
+    @apply hover:shadow-orange-500/30 hover:shadow-2xl;
+
+    [data-theme='dark'] & {
+      @apply bg-gray-800 border-4 border-gray-800/50;
+      @apply shadow-lg shadow-black/5;
+      @apply hover:shadow-orange-500/30 hover:shadow-2xl;
+    }
+
+    [data-theme='light'] & {
+      @apply bg-white border-4 border-gray-400;
+      @apply shadow-lg;
+      @apply hover:shadow-orange-500/30 hover:shadow-2xl;
+    }
+  }
+
+  .settings-icon {
+    @apply transition-transform hover:scale-110;
+  }
+
+  /* Form Elements */
+  .input-base {
+    @apply w-full rounded-2xl px-4 py-2 transition-colors;
+
+    [data-theme='dark'] & {
+      @apply bg-gray-800/50 border border-gray-700 text-white;
+      @apply hover:border-gray-600 focus:border-orange-500 focus:ring-1 focus:ring-orange-500;
+    }
+
+    [data-theme='light'] & {
+      @apply bg-white border border-gray-200 text-gray-900;
+      @apply hover:border-gray-300 focus:border-orange-500;
+    }
+  }
+
+  /* Feature Cards - Band Page */
+  .feature-card {
+    @apply relative overflow-hidden rounded-[1.5rem] p-6;
+    @apply transition-all duration-300 transform;
+
+    [data-theme='dark'] & {
+      @apply bg-gray-800 border-4 border-gray-700/50;
+      @apply shadow-lg shadow-black/5;
+      @apply hover:shadow-orange-500/30 hover:shadow-2xl;
+      @apply hover:scale-[1.02] hover:border-gray-700/50;
+      @apply backdrop-blur-sm;
+    }
+
+    [data-theme='light'] & {
+      @apply bg-white border-4 border-gray-300;
+      @apply shadow-lg hover:shadow-xl;
+      @apply hover:shadow-orange-500/20 hover:scale-[1.02];
+      @apply hover:border-gray-700/50;
+    }
+  }
+
+  .feature-title {
+    font-family: 'Modulus Pro', sans-serif;
+    @apply text-base font-semibold group-hover:text-primary transition-colors;
+
+    [data-theme='dark'] & {
+      @apply text-white;
+    }
+
+    [data-theme='light'] & {
+      @apply text-black;
+    }
+  }
+
+  .feature-description {
+    @apply text-sm text-gray-400 leading-relaxed;
+  }
+
+  .feature-icon {
+    @apply relative rounded-full p-3;
+    @apply shadow-lg h-12 w-12 flex items-center justify-center flex-shrink-0;
+    @apply transition-all duration-300;
+
+    [data-theme='dark'] & {
+      @apply shadow-black/30;
+    }
+  }
+
+  /* Settings Components */
+  .settings-section {
+    @apply overflow-hidden;
+
+    .section-header {
+      @apply w-full text-left py-4 px-6 rounded-[1.5rem];
+      @apply text-lg font-semibold transition-all duration-200;
+
+      [data-theme='dark'] & {
+        @apply bg-gray-800 text-white;
+
+        &.collapsed {
+          @apply bg-gray-800/50 text-gray-400 hover:bg-gray-800/80;
+        }
+      }
+
+      [data-theme='light'] & {
+        @apply bg-white text-gray-900;
+
+        &.collapsed {
+          @apply bg-gray-50 text-gray-600 hover:bg-gray-100;
+        }
+      }
+    }
+
+    .section-content {
+      @apply p-6 mt-2 rounded-[1.5rem];
+
+      [data-theme='dark'] & {
+        @apply bg-gray-800;
+      }
+
+      [data-theme='light'] & {
+        @apply bg-white;
+      }
+    }
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-in-out;
+@layer utilities {
+  @supports (-webkit-touch-callout: none) {
+    .min-h-screen {
+      min-height: -webkit-fill-available;
+    }
+  }
 }

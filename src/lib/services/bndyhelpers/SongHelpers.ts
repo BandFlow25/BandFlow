@@ -1,4 +1,4 @@
-// lib/services/bandflowhelpers/SongHelpers.ts
+// lib/services/bndyhelpers/SongHelpers.ts
 
 import { COLLECTIONS } from '@/lib/constants';
 import { db } from '@/lib/config/firebase';

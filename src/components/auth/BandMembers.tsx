@@ -1,3 +1,4 @@
+//src\components\auth\BandMembers.tsx
 import React, { useEffect, useState } from 'react';
 import { getBandMembers, updateBandMember, removeBandMember, getOrCreateBandInvite, toggleBandInvite, regenerateBandInvite } from '@/lib/services/firebase/bands';
 import type { BandMember, BandInvite } from '@/lib/types/band';
@@ -55,7 +56,7 @@ export default function BandMembers({ bandId, currentUserId }: BandMembersProps)
     if (!invite) return;
     const inviteLink = `${window.location.origin}/join/${invite.inviteCode}`;
     const message = encodeURIComponent(
-      `Join my band on BandFlow25!\n\n${inviteLink}`
+      `Join my band on bndy!\n\n${inviteLink}`
     );
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };

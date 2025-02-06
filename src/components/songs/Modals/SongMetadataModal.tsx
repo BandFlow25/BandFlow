@@ -8,7 +8,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { BandSong } from '@/lib/types/song';
-import { DurationtoMinSec } from '@/lib/services/bandflowhelpers/SetListHelpers';
+import { DurationtoMinSec } from '@/lib/services/bndyhelpers/SetListHelpers';
 import { useBand } from '@/contexts/BandProvider';
 
 interface SongMetadataModalProps {

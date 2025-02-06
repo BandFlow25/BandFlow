@@ -266,7 +266,7 @@ export function SongList({ type }: { type: SongListType }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Enable Delete Mode?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Consider using "Discard" instead of Delete. BandFlow AI uses discarded songs to improve
+                    Consider using "Discard" instead of Delete. bndy AI uses discarded songs to improve
                     song suggestions and avoid recommending similar tracks. Deleted songs may be suggested again.
                   </AlertDialogDescription>
                 </AlertDialogHeader>

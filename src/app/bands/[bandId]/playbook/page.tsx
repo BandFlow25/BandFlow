@@ -6,7 +6,7 @@ import { useBand } from '@/contexts/BandProvider';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PlayBookList } from '@/components/songs/PlayBook';
 import { SongsProvider } from '@/contexts/SongProvider';
-import { SongHelpers } from '@/lib/services/bandflowhelpers/SongHelpers';
+import { SongHelpers } from '@/lib/services/bndyhelpers/SongHelpers';
 
 export default function PlayBookPage() {
   const { activeBand, isReady } = useBand();

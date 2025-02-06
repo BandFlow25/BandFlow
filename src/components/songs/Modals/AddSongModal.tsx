@@ -4,8 +4,8 @@ import { useModal } from '@/contexts/ModalProvider';
 import { useBand } from '@/contexts/BandProvider';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { X } from 'react-feather';
-import { Search, Edit2 } from 'lucide-react';
+
+import { X, Search, Edit2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -206,7 +206,7 @@ export default function AddSongModal() {
           await new Promise(resolve => setTimeout(resolve, 3000 - processingTime));
         }
 
-        toast.success("✨ BandFlow AI has enhanced your song with key and tempo information!", {
+        toast.success("✨ bndy has enhanced your song with key and tempo information!", {
           id: "ai-helper",
           duration: 4000
         });

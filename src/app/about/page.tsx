@@ -7,16 +7,16 @@ import { ExternalLink, Sparkles, MessageCircle } from 'lucide-react';
 
 export default function AboutPage() {
  const handleFeatureRequest = () => {
-   window.open('https://github.com/yourusername/bandflow25/issues/new?labels=enhancement&template=feature_request.md', '_blank');
+   window.open('https://github.com/yourusername/bndy/issues/new?labels=enhancement&template=feature_request.md', '_blank');
  };
 
  return (
-   <PageLayout title="About Band Flow 25">
+   <PageLayout title="About">
      <div className="max-w-3xl mx-auto p-6 space-y-8">
        <section className="space-y-4">
-         <h2 className="text-2xl font-bold text-white">About</h2>
+         
          <p className="text-gray-300">
-           Band Flow 25 is a collaborative platform for bands to manage their song repertoire, from initial suggestions through to performance-ready setlists.
+         <span className="bndy-font-small">bndy</span> is a collaborative platform for bands to manage their song repertoire, from initial suggestions through to performance-ready setlists.
          </p>
        </section>
 
@@ -47,7 +47,7 @@ export default function AboutPage() {
            Feature Requests
          </h2>
          <p className="text-gray-300">
-           Have an idea for a feature that would make Band Flow better for your band?
+           Have an idea for a feature that would make <span className="bndy-font-small">bndy</span> better for your band?
          </p>
          <Button 
            onClick={handleFeatureRequest}

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, MoreVertical, Copy, Trash2, Settings, AlertCircle, Plus, Minus } from 'lucide-react';
-import { DurationtoMinSec, getSetDurationInfo } from '@/lib/services/bandflowhelpers/SetListHelpers';
+import { DurationtoMinSec, getSetDurationInfo } from '@/lib/services/bndyhelpers/SetListHelpers';
 import type { Setlist, SetlistSet } from '@/lib/types/setlist';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";

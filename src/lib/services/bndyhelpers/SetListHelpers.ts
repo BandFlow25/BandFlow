@@ -1,4 +1,4 @@
-// lib/services/bandflowhelpers/SetListHelpers.ts
+// lib/services/bndyhelpers/SetListHelpers.ts
 import type { BandSong } from '@/lib/types/song';
 import type { SetlistSong } from '@/lib/types/setlist';
 

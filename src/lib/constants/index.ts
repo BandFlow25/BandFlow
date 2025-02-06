@@ -1,5 +1,5 @@
 // src/lib/constants/index.ts
-export const APP_NAME = 'BandFlow25';
+export const APP_NAME = 'bndy';
 
 export const INSTRUMENTS = [
   'Vocals',

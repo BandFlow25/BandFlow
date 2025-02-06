@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { MoreVertical, CornerRightDown, Trash2, Clock } from 'lucide-react';
 import type { BandSong } from '@/lib/types/song';
-import { DurationtoMinSec } from '@/lib/services/bandflowhelpers/SetListHelpers';
+import { DurationtoMinSec } from '@/lib/services/bndyhelpers/SetListHelpers';
 import {
   Dialog,
   DialogContent,

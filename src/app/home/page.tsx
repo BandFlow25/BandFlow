@@ -1,33 +1,25 @@
 //src\app\home\page.tsx
 'use client';
 
-import { useAuth } from '@/contexts/AuthProvider';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Plus, Music } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeProvider';
 import Link from 'next/link';
+import { Settings, Plus, Music } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthProvider';
 import { useBand } from '@/contexts/BandProvider';
 import type { Band } from '@/lib/types/band';
-
-console.log('Rendering home page component');
 
 export default function HomePage() {
   const router = useRouter();
   const { user, profile, validateProfile, logout } = useAuth();
-  const {
-    availableBands,
-    isLoadingBands,
-    selectBand,
-    error,
-    clearActiveBand
-  } = useBand();
+  const { availableBands, isLoadingBands, selectBand, error, clearActiveBand } = useBand();
+  const { theme } = useTheme();
 
-  // Check profile first
   useEffect(() => {
     if (!validateProfile()) return;
   }, [validateProfile]);
 
-  // If no user is logged in, redirect to login
   useEffect(() => {
     if (!user && !isLoadingBands) {
       router.push('/login');
@@ -35,21 +27,12 @@ export default function HomePage() {
   }, [user, isLoadingBands, router]);
 
   useEffect(() => {
-    // Clear any active band when arriving at home page
     clearActiveBand();
   }, [clearActiveBand]);
 
   const handleBandSelect = async (bandId: string) => {
-    const pathname = window.location.pathname;
-    console.log('🏠 Home Page - Band Select:', {
-      bandId,
-      currentPath: pathname,
-      nextPath: `/bands/${bandId}`
-    });
     await selectBand(bandId);
-    console.log('🏠 Home Page - After Band Select, before route push');
     router.push(`/bands/${bandId}`);
-    console.log('🏠 Home Page - After route push');
   };
 
   const handleLogout = async () => {
@@ -62,89 +45,83 @@ export default function HomePage() {
     }
   };
 
-  // Show loading state
   if (isLoadingBands) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white px-6 py-8">
+      <div className="min-h-screen bg-background text-foreground px-6 py-8">
         <div className="text-center py-12">
-          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p>Loading bands...</p>
         </div>
       </div>
     );
   }
 
-  // Don't render if not authenticated
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white px-6 py-8">
-      {/* Header section */}
+    <div className="min-h-screen bg-background text-foreground px-6 py-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-        <h1 className="text-2xl font-bold">Welcome to BandFlow25</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400">
+      <h1 className="text-2xl md:text-3xl text-white">Welcome to <span className="bndy-font">bndy</span></h1>
+        
+        <div className="flex items-center gap-4 mt-4 sm:mt-0">
+          <span className="text-secondary-foreground">
             {profile?.displayName || user.email}
           </span>
           <Link
             href="/profile-setup"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-secondary-foreground hover:text-foreground transition-colors"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="settings-icon w-5 h-5 text-blue-500" />
           </Link>
           <button
             onClick={handleLogout}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="button-primary !w-auto"
           >
             Logout
           </button>
         </div>
       </div>
 
-      {/* Bands Grid */}
       <h2 className="text-xl mb-8">Select a Band</h2>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg mb-8">
+        <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-2xl mb-8">
           {error}
         </div>
       )}
 
       {availableBands.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16">
-          <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-6">
-            <Music className="w-8 h-8 text-gray-600" />
+          <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-6">
+            <Music className="w-8 h-8 text-muted" />
           </div>
-          <h3 className="text-2xl font-normal text-white mb-2">No bands yet</h3>
-          <p className="text-gray-400 mb-8">Create your first band to get started</p>
+          <h3 className="text-2xl font-normal text-foreground mb-2">No bands yet</h3>
+          <p className="text-secondary-foreground mb-8">Create your first band to get started</p>
           <Link
-            href={'/bands/create'}
-            onClick={(e) => {
-              console.log('Create band link clicked');
-            }}
-            className="bg-gray-800 rounded-lg flex items-center justify-center h-[242px] group hover:bg-gray-700 transition-colors"
+            href="/bands/create"
+            className="band-tile h-[242px] flex items-center justify-center group"
           >
             <div className="text-center">
-              <Plus className="w-8 h-8 mb-2 text-gray-400 group-hover:text-orange-500 transition-colors" />
-              <span className="text-gray-400 group-hover:text-white transition-colors">
+              <Plus className="w-8 h-8 mb-2 text-secondary-foreground group-hover:text-primary transition-colors" />
+              <span className="text-secondary-foreground group-hover:text-foreground transition-colors">
                 Create New Band
               </span>
             </div>
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
           {availableBands.map((band: Band & { userRole?: string }) => (
             <div
               key={band.id}
               onClick={() => handleBandSelect(band.id)}
-              className="bg-gray-800 rounded-lg p-2 text-left hover:bg-gray-700 transition-colors relative group cursor-pointer"
+              className="band-tile cursor-pointer"
             >
               <div className="relative">
                 <img
                   src={band.imageUrl || '/images/band-placeholder.png'}
                   alt={band.name}
-                  className="rounded-md mb-3 w-full h-48 object-cover"
+                  className="rounded-xl w-full aspect-square object-cover mb-3"
                 />
                 {band.userRole === 'admin' && (
                   <div
@@ -154,23 +131,23 @@ export default function HomePage() {
                         router.push(`/bands/${band.id}/settings`);
                       });
                     }}
-                    className="absolute top-2 right-2 p-2 rounded-lg transition-colors hover:bg-gray-900/50 cursor-pointer"
+                    className="absolute top-0 right-0 p-0 rounded-lg bg-transparent "
                   >
-                    <Settings className="w-10 h-10 text-blue-500" />
+                    <Settings className="settings-icon w-8 h-8 text-blue-500" />
                   </div>
                 )}
               </div>
-              <h3 className="font-semibold">{band.name}</h3>
+              <h3 className="font-semibold text-foreground">{band.name}</h3>
             </div>
           ))}
 
           <Link
             href="/bands/create"
-            className="bg-gray-800 rounded-lg flex items-center justify-center h-[242px] group hover:bg-gray-700 transition-colors"
+            className="band-tile flex items-center justify-center group"
           >
             <div className="text-center">
-              <Plus className="w-8 h-8 mb-2 text-gray-400 group-hover:text-orange-500 transition-colors" />
-              <span className="text-gray-400 group-hover:text-white transition-colors">
+              <Plus className="w-8 h-8 mb-2 text-secondary-foreground group-hover:text-primary transition-colors" />
+              <span className="text-secondary-foreground group-hover:text-foreground transition-colors">
                 Create New Band
               </span>
             </div>

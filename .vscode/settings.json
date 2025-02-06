@@ -1,2 +1,12 @@
 {
-}
+    "editor.quickSuggestions": {
+      "strings": true
+    },
+    "tailwindCSS.includeLanguages": {
+      "typescript": "javascript",
+      "typescriptreact": "javascript"
+    },
+    "tailwindCSS.experimental.classRegex": [
+        
+        "cn\\(([^)]*)\\)"]
+  }
